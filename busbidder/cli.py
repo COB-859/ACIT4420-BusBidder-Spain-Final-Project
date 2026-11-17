@@ -239,7 +239,8 @@ def search_report(
 
 def run_search(args: argparse.Namespace) -> int:
     """Filter and rank the offers for one request and one set of weights."""
-    session = open_session(args)
+    # Typed weights do not use the profiles file, so it need not be there.
+    session = open_session(args, need_profiles=args.weights is None)
     request = request_from_args(args, session)
     if args.weights is not None:
         weights, source = weights_from_text(args.weights)

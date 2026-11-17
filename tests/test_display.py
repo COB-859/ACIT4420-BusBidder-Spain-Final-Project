@@ -94,6 +94,15 @@ class RankingTextTests(unittest.TestCase):
         self.assertRegex(text, r"Flexibility\s+changeable\s+50\.0 pts x\s+20% =\s+10\.00")
         self.assertIn("#3  SR-MAL-0003-F", text)
 
+    def test_missing_emissions_value_is_marked_as_estimated(self):
+        offers = three_offers() + [make_offer("B", serial=4, emissions_kg=None)]
+        weights = check_weights({"price": 30, "duration": 20, "time": 10, "flex": 20,
+                                 "emissions": 20})
+        ranked = rank_offers(offers, REQUEST, weights)
+        text = text_of(format_ranking(ranked, weights, {**SEATS, "SR-MAL-0004": 9}, top=0))
+        self.assertEqual(text.count("(estimated)"), 1)
+        self.assertRegex(text, r"Emissions\s+not reported \(estimated\)")
+
     def test_explanation_follows_the_ranking(self):
         text = text_of(format_ranking(self.ranked, self.weights, SEATS, top=0))
         self.assertIn("Why #1 ranks first:", text)
@@ -141,7 +150,9 @@ class BookingTextTests(unittest.TestCase):
         self.assertIn("Offer:          SR-MAL-0001-S (standard fare)", text)
         self.assertIn("Total price:    60.00 EUR (30.00 EUR per person)", text)
         self.assertIn("Payment:        paid (simulated)", text)
+        self.assertIn("Fare conditions stored with this booking:", text)
         self.assertIn("changeable:   no", text)
+        self.assertIn("refundable:   no", text)
         self.assertIn("luggage:      20 kg per person", text)
         self.assertIn("No real payment was taken", text)
         self.assertNotIn("Refund:", text)

@@ -169,6 +169,15 @@ class SearchTests(CliTestCase):
         self.assertIn("weights from: typed by the traveller", text)
         self.assertIn("#1  CE-MAL-0001-F", text)
 
+    def test_typed_weights_work_without_a_profiles_file(self):
+        (self.data_dir / "profiles.json").unlink()
+        code, text = self.run_main("search", *MALAGA, "--weights", "price=10,duration=10,time=10,flex=70")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("#1  CE-MAL-0001-F", text)
+        code, text = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("profiles file not found", text)
+
     def test_mandatory_conditions_remove_offers(self):
         code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--changeable",
                                    "--budget", "50", "--show-removed")
@@ -407,6 +416,15 @@ class GuidedTests(CliTestCase):
         self.assertIn("Offer:          SR-MAL-0001-S", text)
         self.assertRegex(text, BOOKING_REFERENCE_PATTERN.pattern.strip("^$"))
         self.assertIn("Seats left on departure SR-MAL-0001: 2", text)
+
+    def test_guided_booking_takes_the_rank_the_traveller_chose(self):
+        code, text = self.run_guided([*self.ANSWERS, "2", "y"])
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("#2  CE-MAL-0001-S", text)
+        self.assertIn("Offer:          CE-MAL-0001-S", text)
+        _code, listing = self.run_main("bookings")
+        self.assertIn("CE-MAL-0001-S", listing)
+        self.assertNotIn("SR-MAL-0001-S", listing)
 
     def test_guided_booking_asks_for_confirmation_first(self):
         code, text = self.run_guided([*self.ANSWERS, "1", "n"])

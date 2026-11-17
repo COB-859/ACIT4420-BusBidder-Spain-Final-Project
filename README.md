@@ -24,8 +24,11 @@ All companies, prices, times, ratings and emissions figures are invented.
 Get the project and go into its folder. There is nothing to install.
 
 ```bash
-cd busbidder-spain
+git clone https://github.com/COB-859/ACIT4420-BusBidder-Spain-Final-Project.git
+cd ACIT4420-BusBidder-Spain-Final-Project
 ```
+
+If you have the project as a ZIP file, unpack it and go into the unpacked folder.
 
 Run every command from this folder (the one that holds `main.py`), because the default folders are relative. On Windows, or wherever the command is `python` instead of `python3`, replace `python3` with `python`.
 
@@ -39,7 +42,7 @@ The entry point is `main.py`.
 python3 main.py
 ```
 
-The program asks for the destination, the travel dates, the number of passengers, the preferred departure, the mandatory conditions and a traveller profile. It shows the ranking and offers to book one of the ranked offers, after asking for confirmation. A wrong answer is asked again. Press Enter to skip an optional question, and Ctrl+C to stop.
+The program asks for the destination, the travel dates, the number of passengers, the preferred departure, the mandatory conditions and a traveller profile. At the profile question, answer `custom` to type your own weights. If one weight is above 70%, the program asks whether that is intended. It shows the ranking and offers to book one of the ranked offers, after asking for confirmation. A wrong answer is asked again. Press Enter to skip an optional question, and Ctrl+C to stop.
 
 ### Commands
 
@@ -75,7 +78,7 @@ python3 main.py bookings
 python3 main.py cancel --ref BB-20261120-7K3QX9
 ```
 
-Use the reference printed by `book` in the `cancel` command.
+Use the reference printed by `book` in the `cancel` command. A booking is saved in `state/` and takes a seat, so later searches show one seat fewer on that bus. Delete the `state` folder to start again with no bookings.
 
 ### Options of `search` and `compare`
 
@@ -125,7 +128,7 @@ The tests use only the standard library (`unittest`). They write to temporary fo
 
 ## How offers are filtered and ranked
 
-**Mandatory conditions** remove an offer: enough seats for the party, the budget, and any of the optional conditions the traveller sets. The destination and the travel dates are mandatory too: they decide which offers are looked at, and are listed with the other conditions. Every search prints the mandatory conditions, how many offers each one removed, and the preferences, as two separate lists.
+**Mandatory conditions** remove an offer. Enough seats for the party is always checked. The budget and the other conditions in the options table apply only when the traveller sets them. The destination and the travel dates are mandatory too: they decide which offers are looked at, and are listed with the other conditions. Every search prints the mandatory conditions, how many offers each one removed, and the preferences, as two separate lists.
 
 **Preferences** are scored. Each criterion gives 0 to 100 points, 100 being best:
 
@@ -137,7 +140,7 @@ The tests use only the standard library (`unittest`). They write to temporary fo
 | Flexibility | `flex` | 50 for a changeable ticket plus 50 for a refundable one. |
 | Transfers | `transfers` | Direct 100, one transfer 50, more 0. Optional. |
 | Rating | `rating` | The company's rating from 1 to 5 on a fixed scale. Optional. |
-| Emissions | `emissions` | Compared with the other offers left. A missing value gets the median of the others and is marked "estimated". Optional. |
+| Emissions | `emissions` | Compared with the other offers left. With a minimum range of 1 kg. A missing value gets the median of the points of the offers that report one, and is marked "estimated". If no offer reports a value, every offer gets 50. Optional. |
 
 Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights are percentages that total 100, or fractions that total 1.0. The four criteria `price`, `duration`, `time` and `flex` must each have a weight above 0. Equal totals are ordered by lower price, then earlier departure, then offer ID.
 
@@ -159,7 +162,7 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 | `busbidder/logsetup.py` | Log file configuration. |
 | `busbidder/cli.py` | Commands, guided mode, exit codes. The only module that prints. |
 | `tools/generate_data.py` | Generator for the four main data files. Fixed seed. |
-| `tests/` | Unit tests, one file per module, and `helpers.py` with small builders. |
+| `tests/` | Unit tests, one file per module and one for the data generator, and `helpers.py` with small builders. |
 
 ## Input files (in `data/`)
 
@@ -169,7 +172,7 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 | `destinations.csv` | `destination_code`, `name`, `distance_km` |
 | `departures.csv` | `departure_id`, `company_code`, `destination_code`, `departure`, `arrival` (written as `2027-07-12T08:30`), `transfers`, `seats`, `emissions_kg` (may be empty) |
 | `fares.csv` | `offer_id`, `departure_id`, `fare_type` (`basic`, `standard`, `flex`), `price_eur`, `changeable`, `refundable` (`yes` or `no`), `change_fee_eur`, `refund_percent`, `luggage_kg` |
-| `companies_invalid.csv`, `departures_invalid.csv`, `fares_invalid.csv` | Hand-written invalid rows, one per kind of error. They are read on every run so the rejection path is always used. |
+| `companies_invalid.csv`, `departures_invalid.csv`, `fares_invalid.csv` | 26 hand-written invalid rows, each with a different error. They are read on every run so the rejection path is always used. Rules without an example row here, such as the 500 EUR price limit, are covered by the unit tests. |
 | `profiles.json` | The traveller profiles and their weights. |
 
 A departure ID looks like `SR-MAL-0001` (company code, destination code, serial). An offer ID adds the fare letter: `SR-MAL-0001-B` (`B` basic, `S` standard, `F` flex). A booking reference looks like `BB-20261120-7K3QX9`.
@@ -196,7 +199,7 @@ The program is made for one user at a time. Two copies of the program that book 
 
 ## Example output (in `output/`)
 
-These files were produced with no saved bookings. With `state/` empty or absent, the commands below produce them again.
+These files were produced with no saved bookings. With `state/` empty or absent, the commands below produce them again. If you have made a booking, delete the `state` folder first, or add `--state` with the name of an empty folder to each command.
 
 | File | Command |
 |---|---|
