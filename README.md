@@ -2,8 +2,7 @@
 
 **ACIT4420 Problem-solving with scripting, final project**
 
-- **Student name:** (to be filled in)
-- **Student number:** (to be filled in)
+- **Candidate number:** 859
 
 BusBidder Spain is a simulated marketplace for bus journeys from Madrid. Five fictional bus companies offer journeys to fifteen Spanish cities. The program:
 
