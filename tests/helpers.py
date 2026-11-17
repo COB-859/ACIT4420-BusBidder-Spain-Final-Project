@@ -87,3 +87,52 @@ def make_request(**options) -> TravelRequest:
     }
     values.update(options)
     return TravelRequest(**values)
+
+
+SMALL_DATA = {
+    "companies.csv": (
+        "company_code,name,rating\n"
+        "SR,SolRuta,3.6\n"
+        "CE,Camino Express,4.5\n"
+    ),
+    "destinations.csv": (
+        "destination_code,name,distance_km\n"
+        "MAL,Malaga,530\n"
+        "TOL,Toledo,75\n"
+    ),
+    "departures.csv": (
+        "departure_id,company_code,destination_code,departure,arrival,transfers,seats,emissions_kg\n"
+        "SR-MAL-0001,SR,MAL,2027-07-12T08:00,2027-07-12T15:00,1,3,15.9\n"
+        "CE-MAL-0001,CE,MAL,2027-07-12T09:00,2027-07-12T14:30,0,20,14.8\n"
+        "CE-MAL-0002,CE,MAL,2027-07-13T19:00,2027-07-14T00:30,0,0,\n"
+        "SR-TOL-0001,SR,TOL,2027-07-12T10:00,2027-07-12T11:00,0,12,2.3\n"
+    ),
+    "fares.csv": (
+        "offer_id,departure_id,fare_type,price_eur,changeable,refundable,"
+        "change_fee_eur,refund_percent,luggage_kg\n"
+        "SR-MAL-0001-B,SR-MAL-0001,basic,25.00,no,no,0,0,10\n"
+        "SR-MAL-0001-S,SR-MAL-0001,standard,30.00,yes,no,10,0,20\n"
+        "CE-MAL-0001-S,CE-MAL-0001,standard,48.00,yes,no,10,0,20\n"
+        "CE-MAL-0001-F,CE-MAL-0001,flex,60.00,yes,yes,0,90,30\n"
+        "CE-MAL-0002-S,CE-MAL-0002,standard,45.00,yes,no,10,0,20\n"
+        "SR-TOL-0001-B,SR-TOL-0001,basic,8.00,no,no,0,0,10\n"
+    ),
+    "profiles.json": (
+        '{"budget": {"description": "Price first", '
+        '"weights": {"price": 55, "duration": 15, "time": 10, "flex": 10, "transfers": 10}}, '
+        '"flexible": {"description": "Flexibility first", '
+        '"weights": {"price": 20, "duration": 15, "time": 15, "flex": 50}}}'
+    ),
+}
+
+
+def write_data_dir(folder, **replacements: str):
+    """Write a small valid data folder. A keyword such as fares_csv replaces one file."""
+    folder.mkdir(parents=True, exist_ok=True)
+    files = dict(SMALL_DATA)
+    for name, text in replacements.items():
+        stem, _, extension = name.rpartition("_")
+        files[f"{stem}.{extension}"] = text
+    for name, text in files.items():
+        (folder / name).write_text(text, encoding="utf-8")
+    return folder

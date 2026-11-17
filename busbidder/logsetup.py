@@ -33,5 +33,6 @@ def close_logging() -> None:
     """Close and remove the log file handlers."""
     logger = logging.getLogger(LOGGER_NAME)
     for handler in list(logger.handlers):
-        handler.close()
-        logger.removeHandler(handler)
+        if isinstance(handler, logging.FileHandler):
+            handler.close()
+            logger.removeHandler(handler)

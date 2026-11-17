@@ -1,0 +1,12 @@
+offer_id,departure_id,fare_type,price_eur,changeable,refundable,change_fee_eur,refund_percent,luggage_kg
+SR-MAL-0002-S,SR-MAL-0002,standard,-12.50,yes,no,10,0,20
+SR-MAL-9999-B,SR-MAL-9999,basic,25.00,no,no,0,0,10
+SRMAL0002B,SR-MAL-0002,basic,25.00,no,no,0,0,10
+SR-MAL-0003-F,SR-MAL-0002,flex,40.00,yes,yes,0,90,30
+SR-MAL-0001-B,SR-MAL-0001,basic,25.00,no,no,0,0,10
+SR-MAL-0002-F,SR-MAL-0002,flex,40.00,maybe,yes,0,90,30
+CE-MAL-0001-B,CE-MAL-0001,basic,40.00,no,yes,0,150,10
+CE-MAL-0002-B,CE-MAL-0002,flex,40.00,yes,yes,0,90,30
+CE-MAL-0003-B,CE-MAL-0003,basic,,no,no,0,0,10
+CE-MAL-0004-B,CE-MAL-0004,basic,40.00,no,no,0,80,10
+CE-MAL-0005-B,CE-MAL-0005,basic,cheap,no,no,0,0,10

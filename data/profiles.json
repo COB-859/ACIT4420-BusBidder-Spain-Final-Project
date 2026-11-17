@@ -1,0 +1,18 @@
+{
+  "budget": {
+    "description": "Budget traveller: the price matters most",
+    "weights": {"price": 55, "duration": 15, "time": 10, "flex": 10, "transfers": 10}
+  },
+  "business": {
+    "description": "Business traveller: a short journey at the right time of day",
+    "weights": {"price": 10, "duration": 35, "time": 30, "flex": 15, "transfers": 10}
+  },
+  "flexible": {
+    "description": "Flexibility-focused tourist: a ticket that can be changed or refunded",
+    "weights": {"price": 20, "duration": 15, "time": 15, "flex": 50}
+  },
+  "eco": {
+    "description": "Environment-focused traveller: low emissions per passenger",
+    "weights": {"price": 20, "duration": 15, "time": 10, "flex": 15, "emissions": 40}
+  }
+}

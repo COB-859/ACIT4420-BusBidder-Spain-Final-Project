@@ -1,0 +1,55 @@
+BusBidder Spain: rows set aside while loading the data files
+Rejected rows: 26
+
+companies_invalid.csv, line 2: rating is above 5: 7.2
+    row: ZZ,Fantasma Bus,7.2
+companies_invalid.csv, line 3: duplicate company code: SR
+    row: SR,SolRuta Copy,3.0
+companies_invalid.csv, line 4: company name is missing
+    row: XY,,4.0
+departures_invalid.csv, line 2: unknown destination: 'XXX'
+    row: SR-XXX-0001,SR,XXX,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0
+departures_invalid.csv, line 3: unknown company: 'ZZ'
+    row: ZZ-MAL-0001,ZZ,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0
+departures_invalid.csv, line 4: departure is not a real date and time: '2027-07-32T08:00'
+    row: SR-MAL-9001,SR,MAL,2027-07-32T08:00,2027-07-12T14:00,0,30,15.0
+departures_invalid.csv, line 5: arrival 2027-07-12T08:00 is not after departure 2027-07-12T14:00
+    row: SR-MAL-9002,SR,MAL,2027-07-12T14:00,2027-07-12T08:00,0,30,15.0
+departures_invalid.csv, line 6: seats is below 0: -5
+    row: SR-MAL-9003,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,0,-5,15.0
+departures_invalid.csv, line 7: transfers is missing
+    row: SR-MAL-9004,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,,30,15.0
+departures_invalid.csv, line 8: departure ID must look like SR-MAL-0001: 'SR_MAL_1'
+    row: SR_MAL_1,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0
+departures_invalid.csv, line 9: departure ID SR-MAL-9005 does not match company CE
+    row: SR-MAL-9005,CE,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0
+departures_invalid.csv, line 10: duplicate departure ID: SR-MAL-0001
+    row: SR-MAL-0001,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0
+departures_invalid.csv, line 11: emissions is below 0: -3.5
+    row: SR-MAL-9006,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,-3.5
+departures_invalid.csv, line 12: journey is longer than 24 hours: 2940 minutes
+    row: SR-MAL-9007,SR,MAL,2027-07-12T08:00,2027-07-14T09:00,0,30,15.0
+departures_invalid.csv, line 13: transfers is not a whole number: 'two'
+    row: SR-MAL-9008,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,two,30,15.0
+fares_invalid.csv, line 2: price must be above 0: -12.5
+    row: SR-MAL-0002-S,SR-MAL-0002,standard,-12.50,yes,no,10,0,20
+fares_invalid.csv, line 3: unknown departure: 'SR-MAL-9999'
+    row: SR-MAL-9999-B,SR-MAL-9999,basic,25.00,no,no,0,0,10
+fares_invalid.csv, line 4: offer ID must look like SR-MAL-0001-B: 'SRMAL0002B'
+    row: SRMAL0002B,SR-MAL-0002,basic,25.00,no,no,0,0,10
+fares_invalid.csv, line 5: offer ID SR-MAL-0003-F does not match departure SR-MAL-0002
+    row: SR-MAL-0003-F,SR-MAL-0002,flex,40.00,yes,yes,0,90,30
+fares_invalid.csv, line 6: duplicate offer ID: SR-MAL-0001-B
+    row: SR-MAL-0001-B,SR-MAL-0001,basic,25.00,no,no,0,0,10
+fares_invalid.csv, line 7: changeable must be yes or no: 'maybe'
+    row: SR-MAL-0002-F,SR-MAL-0002,flex,40.00,maybe,yes,0,90,30
+fares_invalid.csv, line 8: refund percent is outside 0 to 100: 150
+    row: CE-MAL-0001-B,CE-MAL-0001,basic,40.00,no,yes,0,150,10
+fares_invalid.csv, line 9: offer ID CE-MAL-0002-B does not match fare type flex
+    row: CE-MAL-0002-B,CE-MAL-0002,flex,40.00,yes,yes,0,90,30
+fares_invalid.csv, line 10: price is missing
+    row: CE-MAL-0003-B,CE-MAL-0003,basic,,no,no,0,0,10
+fares_invalid.csv, line 11: refundable is no but refund percent is 80
+    row: CE-MAL-0004-B,CE-MAL-0004,basic,40.00,no,no,0,80,10
+fares_invalid.csv, line 12: price is not a number: 'cheap'
+    row: CE-MAL-0005-B,CE-MAL-0005,basic,cheap,no,no,0,0,10
