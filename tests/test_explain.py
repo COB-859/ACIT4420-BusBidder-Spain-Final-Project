@@ -39,11 +39,30 @@ class ExplainTests(unittest.TestCase):
         text = explanation(three_offers())
         self.assertIn("Remaining disadvantage: price (40.00 EUR scores 50.0 of 100)", text)
 
-    def test_names_where_most_of_the_total_comes_from(self):
+    def test_names_the_largest_contributions_among_the_strong_criteria(self):
         # Offer 2 contributions: duration 25, price 20, departure 15, flexibility 10.
+        # Price has only 50 points, so it is not named as a strength.
         text = explanation(three_offers())
-        self.assertIn("Most of its total comes from duration (5h 00m, 25.00 points) "
-                      "and price (40.00 EUR, 20.00 points).", text)
+        self.assertIn("Its largest contributions come from duration (5h 00m, 25.00 points) "
+                      "and departure (10:00, 15.00 points).", text)
+
+    def test_a_criterion_is_never_both_a_strength_and_the_disadvantage(self):
+        text = explanation(three_offers())
+        strengths = next(line for line in text.splitlines() if line.startswith("Its largest"))
+        self.assertIn("Remaining disadvantage: price", text)
+        self.assertNotIn("price", strengths)
+
+    def test_a_weak_criterion_with_a_large_weight_is_not_named_as_a_strength(self):
+        # Departure time carries 49% of the weight, but 15:30 is far outside the morning
+        # (41.7 points). Its contribution is the largest, yet it is not a strength.
+        offers = [
+            make_offer(serial=1, price=30, departure="2027-07-12T15:30", arrival="2027-07-12T21:30"),
+            make_offer(serial=2, price=30, departure="2027-07-12T16:00", arrival="2027-07-12T22:00"),
+        ]
+        weights = {"price": 1, "duration": 1, "time": 49, "flex": 49}
+        text = explanation(offers, weights=weights)
+        self.assertIn("Its largest contributions come from price", text)
+        self.assertNotIn("departure (15:30", text.split("Its largest")[1].splitlines()[0])
 
     def test_never_claims_to_be_objectively_best(self):
         text = explanation(three_offers())

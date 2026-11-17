@@ -39,7 +39,14 @@ from busbidder.loader import (
 )
 from busbidder.logsetup import LOG_FILE_NAME, close_logging, configure_logging
 from busbidder.models import Destination, TimeBand, TravellerProfile, TravelRequest
-from busbidder.ranking import ScoredOffer, check_weights, parse_weights, rank_offers
+from busbidder.ranking import (
+    ScoredOffer,
+    check_weights,
+    describe_dominance,
+    parse_weights,
+    rank_offers,
+    require_intended_dominance,
+)
 from busbidder.validation import parse_date
 
 logger = logging.getLogger("busbidder.cli")
@@ -51,6 +58,7 @@ DEFAULT_STATE_DIR = Path("state")
 DEFAULT_LOG_DIR = Path("logs")
 DEFAULT_OUTPUT_DIR = Path("output")
 SHOW_ALL = 0
+INVALID_SUFFIX = "_invalid.csv"
 CUSTOM_WEIGHTS = "custom"
 
 # The guided mode reads answers through a function like input(), so tests
@@ -180,7 +188,15 @@ def run_validate(args: argparse.Namespace) -> int:
     for problem in problems:
         logger.error("%s: %s", PROFILES_FILE, problem)
         print(f"    {problem}")
-    return EXIT_ERROR if problems else EXIT_OK
+    # The files of invalid examples are expected to be rejected. A rejected
+    # row in a main file means the real data has a fault.
+    in_main_files = [record for record in data.rejected if not record.source.endswith(INVALID_SUFFIX)]
+    if in_main_files:
+        logger.error("%d row(s) of the main data files were rejected", len(in_main_files))
+        print(f"  Result: {len(in_main_files)} row(s) of the main data files were rejected.")
+    elif not problems:
+        print("  Result: the main data files and the profiles are valid.")
+    return EXIT_ERROR if problems or in_main_files else EXIT_OK
 
 
 def weights_from_profile(key: str, session: Session) -> tuple[dict[str, float], str]:
@@ -229,6 +245,7 @@ def run_search(args: argparse.Namespace) -> int:
         weights, source = weights_from_text(args.weights)
     else:
         weights, source = weights_from_profile(args.profile, session)
+    require_intended_dominance(weights, args.allow_dominant)
     lines, _ranked = search_report(session, request, weights, source, args.top, args.show_removed)
     emit(lines, args.save)
     return EXIT_OK
@@ -245,6 +262,7 @@ def run_compare(args: argparse.Namespace) -> int:
     for key in keys:
         profile = find_profile(key, session.profiles)
         weights = check_weights(profile.weights)
+        require_intended_dominance(weights, args.allow_dominant)
         results[key] = (profile.description, weights, rank_offers(result.accepted, request, weights))
     lines = format_request(request)
     lines += ["", f"Preferred departure: {request.preferred_departure.describe()}"]
@@ -387,10 +405,15 @@ def ask_weights(session: Session, read: Reader) -> tuple[dict[str, float], str]:
             return None
         return weights_from_profile(text, session)
 
-    chosen = ask(read, "Profile: ", choose)
-    if chosen is not None:
-        return chosen
-    return ask(read, "Weights, for example price=40,duration=25,time=15,flex=20: ", weights_from_text)
+    while True:
+        chosen = ask(read, "Profile: ", choose)
+        if chosen is None:
+            chosen = ask(read, "Weights, for example price=40,duration=25,time=15,flex=20: ",
+                         weights_from_text)
+        dominance = describe_dominance(chosen[0])
+        if dominance is None or ask(read, f"{dominance}. Is that what you want? (y/N): ", to_yes_no):
+            return chosen
+        print("Choose again.")
 
 
 def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
@@ -421,8 +444,17 @@ def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
         if rank is None:
             print("Nothing booked.")
             return EXIT_OK
-        booking = make_service(session).book(ranked[rank - 1].offer.offer_id, request.passengers)
-        emit(format_confirmation(booking))
+        offer = ranked[rank - 1].offer
+        question = (
+            f"Book {offer.offer_id} for {request.passengers} passenger(s), "
+            f"{offer.price * request.passengers:.2f} EUR in total? (y/N): "
+        )
+        if not ask(read, question, to_yes_no):
+            print("Nothing booked.")
+            return EXIT_OK
+        service = make_service(session)
+        booking = service.book(offer.offer_id, request.passengers)
+        emit([*format_confirmation(booking), seats_line(session, service, booking.departure_id)])
         return EXIT_OK
     except (EOFError, KeyboardInterrupt):
         logger.info("Guided mode stopped by the user")
@@ -470,6 +502,8 @@ def _add_request_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--changeable", action="store_true", help="mandatory: ticket must be changeable")
     parser.add_argument("--refundable", action="store_true", help="mandatory: ticket must be refundable")
     parser.add_argument("--min-luggage", type=int, help="mandatory: lowest luggage allowance in kg")
+    parser.add_argument("--allow-dominant", action="store_true",
+                        help="accept weights where one criterion counts for more than 70%%")
     parser.add_argument("--save", type=Path, help="also write the result to this file")
 
 

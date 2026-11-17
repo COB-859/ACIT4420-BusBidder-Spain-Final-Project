@@ -39,22 +39,31 @@ def explain_top(ranked: Sequence[ScoredOffer]) -> list[str]:
         )
     else:
         lines.extend(_compare_with_runner_up(top, ranked[1]))
-        lines.append(_main_sources(top))
+        lines.extend(_main_sources(top))
     lines.append(_weakest_point(top))
     lines.extend(_estimates(top, ranked))
     lines.append(CLOSING)
     return lines
 
 
-def _main_sources(top: ScoredOffer) -> str:
-    """Name the criteria that give the top offer most of its total."""
+def _main_sources(top: ScoredOffer) -> list[str]:
+    """Name the criteria that add most to the top offer's total.
+
+    A criterion the offer scores poorly on is left out, even when a large
+    weight makes its contribution big. Otherwise the same criterion could
+    be named here and as the remaining disadvantage.
+    """
+    strong = [name for name in top.contributions
+              if top.scores[name].points >= DISADVANTAGE_BELOW_POINTS]
     # Largest contribution first. sorted() keeps the registry order for equal ones.
-    largest = sorted(top.contributions, key=lambda name: -top.contributions[name])[:MAX_ADVANTAGES]
+    largest = sorted(strong, key=lambda name: -top.contributions[name])[:MAX_ADVANTAGES]
+    if not largest:
+        return []
     parts = [
         f"{_label(name)} ({top.scores[name].value}, {top.contributions[name]:.2f} points)"
         for name in largest
     ]
-    return "Most of its total comes from " + " and ".join(parts) + "."
+    return ["Its largest contributions come from " + " and ".join(parts) + "."]
 
 
 def _estimates(top: ScoredOffer, ranked: Sequence[ScoredOffer]) -> list[str]:

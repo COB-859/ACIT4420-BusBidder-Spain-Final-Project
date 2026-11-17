@@ -29,6 +29,10 @@ from busbidder.validation import (
 MINUTES_PER_DAY = 24 * 60
 MAX_DURATION_MINUTES = 24 * 60
 MAX_REFUND_PERCENT = 100.0
+# No bus fare in this marketplace comes near this. A higher value is far
+# more likely a typing error (3819 for 38.19) than a real price, and one
+# such value would flatten the price scores of every other offer.
+MAX_PLAUSIBLE_PRICE_EUR = 500.0
 
 STATUS_CONFIRMED = "confirmed"
 STATUS_CANCELLED = "cancelled"
@@ -149,8 +153,16 @@ class Fare:
             )
         if self.price <= 0:
             raise InvalidRecordError(f"price must be above 0: {self.price:g}")
+        if self.price > MAX_PLAUSIBLE_PRICE_EUR:
+            raise InvalidRecordError(
+                f"price is implausibly high (above {MAX_PLAUSIBLE_PRICE_EUR:g} EUR): {self.price:g}"
+            )
         if self.change_fee < 0:
             raise InvalidRecordError(f"change fee is negative: {self.change_fee:g}")
+        if not self.changeable and self.change_fee > 0:
+            raise InvalidRecordError(
+                f"changeable is no but the change fee is {self.change_fee:g}"
+            )
         if not 0 <= self.refund_percent <= MAX_REFUND_PERCENT:
             raise InvalidRecordError(f"refund percent is outside 0 to 100: {self.refund_percent:g}")
         if self.refundable != (self.refund_percent > 0):

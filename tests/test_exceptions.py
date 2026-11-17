@@ -41,24 +41,15 @@ class ExceptionHierarchyTests(unittest.TestCase):
 
 
 class InvalidRecordErrorTests(unittest.TestCase):
-    """The message says where the bad row is."""
+    """The reason is kept apart, so the loader can record it with file and line."""
 
-    def test_message_with_file_and_line(self):
-        error = InvalidRecordError("price is negative", source="fares.csv", line=7)
-        self.assertEqual(str(error), "fares.csv, line 7: price is negative")
+    def test_reason_is_kept_and_is_the_message(self):
+        error = InvalidRecordError("price is negative")
         self.assertEqual(error.reason, "price is negative")
-        self.assertEqual(error.line, 7)
+        self.assertEqual(str(error), "price is negative")
 
-    def test_message_with_file_only(self):
-        error = InvalidRecordError("price is negative", source="fares.csv")
-        self.assertEqual(str(error), "fares.csv: price is negative")
-
-    def test_message_without_location(self):
-        self.assertEqual(str(InvalidRecordError("price is negative")), "price is negative")
-
-    def test_line_zero_is_still_shown(self):
-        error = InvalidRecordError("empty file", source="fares.csv", line=0)
-        self.assertEqual(str(error), "fares.csv, line 0: empty file")
+    def test_identifier_error_keeps_its_reason_too(self):
+        self.assertEqual(InvalidIdentifierError("bad ID").reason, "bad ID")
 
 
 if __name__ == "__main__":

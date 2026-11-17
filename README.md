@@ -39,7 +39,7 @@ The entry point is `main.py`.
 python3 main.py
 ```
 
-The program asks for the destination, the travel dates, the number of passengers, the preferred departure, the mandatory conditions and a traveller profile. It shows the ranking and offers to book one of the ranked offers. A wrong answer is asked again. Press Enter to skip an optional question, and Ctrl+C to stop.
+The program asks for the destination, the travel dates, the number of passengers, the preferred departure, the mandatory conditions and a traveller profile. It shows the ranking and offers to book one of the ranked offers, after asking for confirmation. A wrong answer is asked again. Press Enter to skip an optional question, and Ctrl+C to stop.
 
 ### Commands
 
@@ -64,7 +64,7 @@ python3 main.py search --destination Malaga --date-from 2027-07-12 --date-to 202
 Rank the same offers under every profile:
 
 ```bash
-python3 main.py compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1
+python3 main.py compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable
 ```
 
 Book, list and cancel:
@@ -90,6 +90,7 @@ Use the reference printed by `book` in the `cancel` command.
 | `--max-duration` | Mandatory: longest journey in minutes. |
 | `--changeable`, `--refundable` | Mandatory: the ticket must be changeable or refundable. |
 | `--min-luggage` | Mandatory: lowest luggage allowance in kg. |
+| `--allow-dominant` | Accept weights where one criterion counts for more than 70%. Without it such weights are refused, so one criterion cannot dominate by accident. |
 | `--save FILE` | Also write the result to a file. |
 | `--profile KEY` | `search` only. One of `budget`, `business`, `flexible`, `eco` (from `data/profiles.json`). |
 | `--weights TEXT` | `search` only, instead of `--profile`. For example `price=40,duration=25,time=15,flex=20`. |
@@ -124,7 +125,7 @@ The tests use only the standard library (`unittest`). They write to temporary fo
 
 ## How offers are filtered and ranked
 
-**Mandatory conditions** remove an offer: enough seats for the party, the budget, and any of the optional conditions the traveller sets. The destination and the travel dates decide which offers are looked at. Every search prints the mandatory conditions, how many offers each one removed, and the preferences, as two separate lists.
+**Mandatory conditions** remove an offer: enough seats for the party, the budget, and any of the optional conditions the traveller sets. The destination and the travel dates are mandatory too: they decide which offers are looked at, and are listed with the other conditions. Every search prints the mandatory conditions, how many offers each one removed, and the preferences, as two separate lists.
 
 **Preferences** are scored. Each criterion gives 0 to 100 points, 100 being best:
 
@@ -173,6 +174,8 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 
 A departure ID looks like `SR-MAL-0001` (company code, destination code, serial). An offer ID adds the fare letter: `SR-MAL-0001-B` (`B` basic, `S` standard, `F` flex). A booking reference looks like `BB-20261120-7K3QX9`.
 
+A price above 500 EUR is rejected as implausible, and so is a ticket that cannot be changed but has a change fee. `validate` ends with exit code 1 when a row of a main data file is rejected or a profile is invalid; the rows in the three files of invalid examples are expected to be rejected and do not count.
+
 Invalid rows are rejected and set aside, never corrected. They are listed in `output/rejected_records.txt` with file, line and reason, and in the log. A departure with zero seats is a valid record: it is loaded, logged as sold out and removed from searches by the seat condition.
 
 To write the four main data files again (the result is identical on every run):
@@ -199,7 +202,7 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 |---|---|
 | `validate.txt` | `python3 main.py validate > output/validate.txt` |
 | `search_spec_example.txt` | `python3 main.py search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable --weights price=40,duration=25,time=15,flex=20 --save output/search_spec_example.txt` |
-| `compare_malaga.txt` | `python3 main.py compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --save output/compare_malaga.txt` |
+| `compare_malaga.txt` | `python3 main.py compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable --save output/compare_malaga.txt` |
 | `compare_barcelona.txt` | `python3 main.py compare --destination Barcelona --date-from 2027-07-12 --date-to 2027-07-14 --depart afternoon --budget 70 --save output/compare_barcelona.txt` |
 | `compare_santiago.txt` | `python3 main.py compare --destination "Santiago de Compostela" --date-from 2027-07-10 --date-to 2027-07-16 --depart night --budget 60 --passengers 2 --save output/compare_santiago.txt` |
 | `sensitivity_price_30.txt` | The `search_spec_example` command with `--weights price=30,duration=30,time=20,flex=20 --top 3` |

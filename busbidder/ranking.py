@@ -82,11 +82,34 @@ def _is_finite(number: Real) -> bool:
 
 
 def dominant_criterion(weights: Mapping[str, float]) -> str | None:
-    """Return the criterion whose weight is above 70%, if there is one."""
+    """Return the criterion whose weight is above the dominance limit, if there is one."""
     for name, weight in weights.items():
         if weight > DOMINANT_WEIGHT_PERCENT:
             return name
     return None
+
+
+def describe_dominance(weights: Mapping[str, float]) -> str | None:
+    """Say which criterion would decide most of the ranking, or return None."""
+    name = dominant_criterion(weights)
+    if name is None:
+        return None
+    return (
+        f"{CRITERIA[name].label} has a weight of {weights[name]:g}%, above "
+        f"{DOMINANT_WEIGHT_PERCENT:g}%, so it would decide most of the ranking"
+    )
+
+
+def require_intended_dominance(weights: Mapping[str, float], intended: bool) -> None:
+    """Refuse weights that let one criterion dominate, unless that is intended.
+
+    This stops one criterion from dominating by accident, for example
+    through a typing error, while a traveller who really cares about one
+    thing above all can still say so.
+    """
+    problem = describe_dominance(weights)
+    if problem is not None and not intended:
+        raise WeightError(f"{problem}. If that is intended, add --allow-dominant")
 
 
 @dataclass(frozen=True)

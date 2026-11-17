@@ -103,6 +103,18 @@ class FareTests(unittest.TestCase):
             with self.subTest(price=price), self.assertRaises(InvalidRecordError):
                 make_fare(price=price)
 
+    def test_implausibly_high_price_is_rejected(self):
+        make_fare(price=500.0)
+        with self.assertRaises(InvalidRecordError) as caught:
+            make_fare(price=3819.0)   # 38.19 typed without the decimal point
+        self.assertIn("price is implausibly high", caught.exception.reason)
+
+    def test_change_fee_on_a_ticket_that_cannot_be_changed_is_rejected(self):
+        make_fare(changeable=True, change_fee=25)
+        with self.assertRaises(InvalidRecordError) as caught:
+            make_fare(changeable=False, change_fee=25)
+        self.assertIn("changeable is no but the change fee is 25", caught.exception.reason)
+
     def test_offer_id_must_match_departure_and_fare_type(self):
         with self.assertRaises(InvalidRecordError) as caught:
             Fare("SR-MAL-0001-B", "SR-MAL-0002", "basic", 30, False, False, 0, 0, 20)

@@ -12,7 +12,7 @@ from busbidder.constraints import FilterResult, describe_constraints
 from busbidder.criteria import CRITERIA
 from busbidder.explain import explain_top
 from busbidder.models import Booking, Departure, TravelRequest, format_duration
-from busbidder.ranking import ScoredOffer, dominant_criterion
+from busbidder.ranking import ScoredOffer, describe_dominance
 
 DAY_FORMAT = "%a %d %b %H:%M"
 RULE = "-" * 72
@@ -37,6 +37,8 @@ def format_request(request: TravelRequest) -> list[str]:
         f"{request.date_from} to {request.date_to}, {request.passengers} passenger(s)",
         "",
         "Mandatory conditions (an offer that fails one is removed before ranking):",
+        f"  - destination {request.destination.name}, departure on {request.date_from} "
+        f"to {request.date_to} (these decide which offers are searched)",
     ]
     lines.extend(f"  - {condition}" for condition in describe_constraints(request))
     return lines
@@ -51,12 +53,9 @@ def format_preferences(request: TravelRequest, weights: Mapping[str, float], sou
         f"  - preferred departure: {request.preferred_departure.describe()}",
         f"  - weights from: {source}",
     ]
-    dominant = dominant_criterion(weights)
-    if dominant is not None:
-        lines.append(
-            f"  Note: {CRITERIA[dominant].label} has a weight above 70%, "
-            "so it will decide most of the ranking."
-        )
+    dominance = describe_dominance(weights)
+    if dominance is not None:
+        lines.append(f"  Note: {dominance}. The traveller confirmed this.")
     return lines
 
 

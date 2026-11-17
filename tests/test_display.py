@@ -32,6 +32,8 @@ class RequestTextTests(unittest.TestCase):
         text = text_of(format_request(REQUEST))
         self.assertIn("Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)", text)
         self.assertIn("Mandatory conditions", text)
+        self.assertIn("  - destination Malaga, departure on 2027-07-12 to 2027-07-14 "
+                      "(these decide which offers are searched)", text)
         self.assertIn("  - price per person at most 50.00 EUR", text)
         self.assertIn("  - at most 1 transfer(s)", text)
 
@@ -46,7 +48,8 @@ class RequestTextTests(unittest.TestCase):
     def test_a_dominant_weight_gets_a_note(self):
         weights = {"price": 85, "duration": 5, "time": 5, "flex": 5}
         text = text_of(format_preferences(REQUEST, weights, "typed"))
-        self.assertIn("Note: Price has a weight above 70%", text)
+        self.assertIn("Note: Price has a weight of 85%, above 70%, so it would decide most of the "
+                      "ranking. The traveller confirmed this.", text)
 
 
 class FilterTextTests(unittest.TestCase):

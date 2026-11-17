@@ -140,6 +140,12 @@ class LoadAllTests(TempDirTestCase):
                 result = load_all(write_data_dir(folder, departures_csv=departures))
                 self.assertIn("seats is not a whole number", result.rejected[0].reason)
 
+    def test_mistyped_price_does_not_reach_the_ranking(self):
+        fares = SMALL_DATA["fares.csv"].replace("basic,25.00", "basic,2500")
+        result = load_all(write_data_dir(self.folder, fares_csv=fares))
+        self.assertNotIn("SR-MAL-0001-B", result.fares)
+        self.assertIn("price is implausibly high", result.rejected[0].reason)
+
     def test_unknown_company_and_destination_are_rejected(self):
         departures = SMALL_DATA["departures.csv"] + (
             "ZZ-MAL-0001,ZZ,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0\n"

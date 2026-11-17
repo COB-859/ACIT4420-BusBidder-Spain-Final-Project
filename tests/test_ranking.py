@@ -3,7 +3,14 @@
 import unittest
 
 from busbidder.exceptions import WeightError
-from busbidder.ranking import check_weights, dominant_criterion, parse_weights, rank_offers
+from busbidder.ranking import (
+    check_weights,
+    describe_dominance,
+    dominant_criterion,
+    parse_weights,
+    rank_offers,
+    require_intended_dominance,
+)
 from tests.helpers import make_offer, make_request
 
 SPEC_WEIGHTS = {"price": 40, "duration": 25, "time": 15, "flex": 20}
@@ -98,6 +105,22 @@ class CheckWeightsTests(unittest.TestCase):
         self.assertEqual(
             dominant_criterion({"price": 71, "duration": 10, "time": 10, "flex": 9}), "price"
         )
+
+
+class DominanceTests(unittest.TestCase):
+    AT_LIMIT = {"price": 70, "duration": 10, "time": 10, "flex": 10}
+    ABOVE = {"price": 71, "duration": 10, "time": 10, "flex": 9}
+
+    def test_weights_up_to_the_limit_are_accepted(self):
+        self.assertIsNone(describe_dominance(self.AT_LIMIT))
+        require_intended_dominance(self.AT_LIMIT, intended=False)
+
+    def test_a_dominant_weight_is_refused_unless_it_is_intended(self):
+        with self.assertRaises(WeightError) as caught:
+            require_intended_dominance(self.ABOVE, intended=False)
+        self.assertIn("Price has a weight of 71%, above 70%", str(caught.exception))
+        self.assertIn("--allow-dominant", str(caught.exception))
+        require_intended_dominance(self.ABOVE, intended=True)
 
 
 class ParseWeightsTests(unittest.TestCase):

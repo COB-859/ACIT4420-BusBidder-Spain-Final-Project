@@ -1,6 +1,7 @@
 Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)
 
 Mandatory conditions (an offer that fails one is removed before ranking):
+  - destination Malaga, departure on 2027-07-12 to 2027-07-14 (these decide which offers are searched)
   - at least 1 seat(s) left
   - price per person at most 50.00 EUR
   - at most 1 transfer(s)
@@ -46,6 +47,6 @@ Why #1 ranks first:
   VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 70.59 points out of 100.
   Compared with the runner-up CL-MAL-0007-S (68.40 points), it gains most on flexibility (changeable + refundable against changeable, +10.00 points).
   The runner-up is better on price (38.19 EUR against 43.38 EUR, -7.82 points for the top offer).
-  Most of its total comes from duration (6h 30m, 20.77 points) and departure (10:15, 20.00 points).
+  Its largest contributions come from duration (6h 30m, 20.77 points) and departure (10:15, 20.00 points).
   Remaining disadvantage: price (43.38 EUR scores 32.7 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

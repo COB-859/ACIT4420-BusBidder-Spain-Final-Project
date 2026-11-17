@@ -1,25 +1,27 @@
 Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)
 
 Mandatory conditions (an offer that fails one is removed before ranking):
+  - destination Malaga, departure on 2027-07-12 to 2027-07-14 (these decide which offers are searched)
   - at least 1 seat(s) left
   - price per person at most 50.00 EUR
   - at most 1 transfer(s)
+  - ticket must be changeable
 
 Preferred departure: morning (06:00 to 12:00)
 
 Offers for this city and these dates: 47
-Removed by a mandatory condition: 18
-  removed per condition (an offer can fail several): seats 2, budget 16
-Offers left to rank: 29
+Removed by a mandatory condition: 30
+  removed per condition (an offer can fail several): seats 2, budget 16, changeable 13
+Offers left to rank: 17
 
 ------------------------------------------------------------------------
 Profile comparison: same request and same offers, different weights
 ------------------------------------------------------------------------
 Profile   Top offer      Company         Departs                 Price Duration Fare       Total
-budget    CL-MAL-0007-B  CostaLink       Tue 13 Jul 08:30    31.83 EUR 6h 30m   basic      70.41
-business  VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   83.54
-flexible  VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   81.28
-eco       VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   81.28
+budget    SR-MAL-0008-S  SolRuta         Wed 14 Jul 15:45    29.98 EUR 8h 00m   standard   68.75
+business  VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   82.50
+flexible  VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   81.93
+eco       VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   81.93
 
 The 4 profiles recommend 2 different offer(s).
 
@@ -27,74 +29,74 @@ The 4 profiles recommend 2 different offer(s).
 Profile 'budget': Budget traveller: the price matters most
 Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
 ------------------------------------------------------------------------
-#1  CL-MAL-0007-B  CostaLink, basic fare   TOTAL 70.41
-    Tue 13 Jul 08:30 -> 15:00 (6h 30m), direct, 44 seat(s) left, luggage 10 kg
-    Price       31.83 EUR                   71.4 pts x    55% =  39.28
-    Duration    6h 30m                      74.2 pts x    15% =  11.13
-    Departure   08:30                      100.0 pts x    10% =  10.00
-    Flexibility fixed                        0.0 pts x    10% =   0.00
-    Transfers   direct                     100.0 pts x    10% =  10.00
-    next: #2 SR-MAL-0007-B (70.27), #3 SR-MAL-0005-B (68.38)
+#1  SR-MAL-0008-S  SolRuta, standard fare   TOTAL 68.75
+    Wed 14 Jul 15:45 -> 23:45 (8h 00m), 1 transfer(s), 46 seat(s) left, luggage 20 kg
+    Price       29.98 EUR                  100.0 pts x    55% =  55.00
+    Duration    8h 00m                       0.0 pts x    15% =   0.00
+    Departure   15:45                       37.5 pts x    10% =   3.75
+    Flexibility changeable                  50.0 pts x    10% =   5.00
+    Transfers   1 transfer(s)               50.0 pts x    10% =   5.00
+    next: #2 CL-MAL-0007-S (67.72), #3 CL-MAL-0009-S (62.19)
 
-  CL-MAL-0007-B (CostaLink, basic fare) ranks first with 70.41 points out of 100.
-  Compared with the runner-up SR-MAL-0007-B (70.27 points), it gains most on duration (6h 30m against 8h 05m, +9.19 points) and transfers (direct against 1 transfer(s), +5.00 points).
-  The runner-up is better on price (24.60 EUR against 31.83 EUR, -15.72 points for the top offer).
-  Most of its total comes from price (31.83 EUR, 39.28 points) and duration (6h 30m, 11.13 points).
-  Remaining disadvantage: flexibility (fixed scores 0.0 of 100).
+  SR-MAL-0008-S (SolRuta, standard fare) ranks first with 68.75 points out of 100.
+  Compared with the runner-up CL-MAL-0007-S (67.72 points), it gains most on price (29.98 EUR against 38.19 EUR, +22.67 points).
+  The runner-up is better on duration (6h 30m against 8h 00m, -10.38 points for the top offer).
+  Its largest contributions come from price (29.98 EUR, 55.00 points).
+  Remaining disadvantage: duration (8h 00m scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
 ------------------------------------------------------------------------
 Profile 'business': Business traveller: a short journey at the right time of day
 Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
 ------------------------------------------------------------------------
-#1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 83.54
+#1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 82.50
     Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
-    Price       43.38 EUR                   25.8 pts x    10% =   2.58
-    Duration    6h 30m                      74.2 pts x    35% =  25.97
+    Price       43.38 EUR                   32.7 pts x    10% =   3.27
+    Duration    6h 30m                      69.2 pts x    35% =  24.23
     Departure   10:15                      100.0 pts x    30% =  30.00
     Flexibility changeable + refundable    100.0 pts x    15% =  15.00
     Transfers   direct                     100.0 pts x    10% =  10.00
-    next: #2 CL-MAL-0007-F (81.82), #3 CE-MAL-0005-S (78.64)
+    next: #2 CL-MAL-0007-F (80.32), #3 CE-MAL-0005-S (77.95)
 
-  VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 83.54 points out of 100.
-  Compared with the runner-up CL-MAL-0007-F (81.82 points), it gains most on price (43.38 EUR against 47.74 EUR, +1.72 points).
-  Most of its total comes from departure (10:15, 30.00 points) and duration (6h 30m, 25.97 points).
-  Remaining disadvantage: price (43.38 EUR scores 25.8 of 100).
+  VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 82.50 points out of 100.
+  Compared with the runner-up CL-MAL-0007-F (80.32 points), it gains most on price (43.38 EUR against 47.74 EUR, +2.19 points).
+  Its largest contributions come from departure (10:15, 30.00 points) and duration (6h 30m, 24.23 points).
+  Remaining disadvantage: price (43.38 EUR scores 32.7 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
 ------------------------------------------------------------------------
 Profile 'flexible': Flexibility-focused tourist: a ticket that can be changed or refunded
 Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
 ------------------------------------------------------------------------
-#1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 81.28
+#1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 81.93
     Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
-    Price       43.38 EUR                   25.8 pts x    20% =   5.15
-    Duration    6h 30m                      74.2 pts x    15% =  11.13
+    Price       43.38 EUR                   32.7 pts x    20% =   6.55
+    Duration    6h 30m                      69.2 pts x    15% =  10.38
     Departure   10:15                      100.0 pts x    15% =  15.00
     Flexibility changeable + refundable    100.0 pts x    50% =  50.00
-    next: #2 CL-MAL-0007-F (77.84), #3 VB-MAL-0004-S (77.14)
+    next: #2 CL-MAL-0007-F (77.55), #3 VB-MAL-0004-S (76.86)
 
-  VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 81.28 points out of 100.
-  Compared with the runner-up CL-MAL-0007-F (77.84 points), it gains most on price (43.38 EUR against 47.74 EUR, +3.45 points).
-  Most of its total comes from flexibility (changeable + refundable, 50.00 points) and departure (10:15, 15.00 points).
-  Remaining disadvantage: price (43.38 EUR scores 25.8 of 100).
+  VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 81.93 points out of 100.
+  Compared with the runner-up CL-MAL-0007-F (77.55 points), it gains most on price (43.38 EUR against 47.74 EUR, +4.38 points).
+  Its largest contributions come from flexibility (changeable + refundable, 50.00 points) and departure (10:15, 15.00 points).
+  Remaining disadvantage: price (43.38 EUR scores 32.7 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
 ------------------------------------------------------------------------
 Profile 'eco': Environment-focused traveller: low emissions per passenger
 Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
 ------------------------------------------------------------------------
-#1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 81.28
+#1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 81.93
     Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
-    Price       43.38 EUR                   25.8 pts x    20% =   5.15
-    Duration    6h 30m                      74.2 pts x    15% =  11.13
+    Price       43.38 EUR                   32.7 pts x    20% =   6.55
+    Duration    6h 30m                      69.2 pts x    15% =  10.38
     Departure   10:15                      100.0 pts x    10% =  10.00
     Flexibility changeable + refundable    100.0 pts x    15% =  15.00
     Emissions   8.6 kg                     100.0 pts x    40% =  40.00
-    next: #2 VB-MAL-0004-S (75.73), #3 VB-MAL-0003-S (73.60)
+    next: #2 VB-MAL-0004-S (75.45), #3 VB-MAL-0003-S (72.95)
 
-  VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 81.28 points out of 100.
-  Compared with the runner-up VB-MAL-0004-S (75.73 points), it gains most on duration (6h 30m against 6h 55m, +2.42 points) and price (43.38 EUR against 45.56 EUR, +1.72 points).
-  Most of its total comes from emissions (8.6 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
-  Remaining disadvantage: price (43.38 EUR scores 25.8 of 100).
+  VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 81.93 points out of 100.
+  Compared with the runner-up VB-MAL-0004-S (75.45 points), it gains most on duration (6h 30m against 6h 55m, +2.88 points) and price (43.38 EUR against 45.56 EUR, +2.19 points).
+  Its largest contributions come from emissions (8.6 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
+  Remaining disadvantage: price (43.38 EUR scores 32.7 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

@@ -18,24 +18,14 @@ class DataFileError(BusBidderError):
 class InvalidRecordError(BusBidderError):
     """One row of a data file holds a missing or impossible value."""
 
-    def __init__(self, reason: str, source: str = "", line: int | None = None) -> None:
-        """Keep the reason, the file name and the line number of the bad row."""
+    def __init__(self, reason: str) -> None:
+        """Keep the reason, so the loader can record it with the file and line."""
         self.reason = reason
-        self.source = source
-        self.line = line
-        super().__init__(self._describe())
-
-    def _describe(self) -> str:
-        """Return the message with the file and line in front, when known."""
-        if self.source and self.line is not None:
-            return f"{self.source}, line {self.line}: {self.reason}"
-        if self.source:
-            return f"{self.source}: {self.reason}"
-        return self.reason
+        super().__init__(reason)
 
 
 class InvalidIdentifierError(InvalidRecordError):
-    """A departure ID, offer ID or booking reference has the wrong format."""
+    """A departure ID or an offer ID has the wrong format."""
 
 
 class InvalidRequestError(BusBidderError):

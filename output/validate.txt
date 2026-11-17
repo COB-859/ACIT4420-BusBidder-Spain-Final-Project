@@ -31,3 +31,4 @@ Data check
     fares_invalid.csv, line 11: refundable is no but refund percent is 80
     fares_invalid.csv, line 12: price is not a number: 'cheap'
   Profiles:     4 valid, 0 invalid
+  Result: the main data files and the profiles are valid.

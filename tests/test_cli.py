@@ -90,8 +90,9 @@ class ValidateTests(CliTestCase):
         fares = SMALL_DATA["fares.csv"].replace("25.00", "-25.00")
         write_data_dir(self.data_dir, fares_csv=fares)
         code, text = self.run_main("validate")
-        self.assertEqual(code, EXIT_OK)
+        self.assertEqual(code, EXIT_ERROR)
         self.assertIn("fares.csv, line 2: price must be above 0", text)
+        self.assertIn("Result: 1 row(s) of the main data files were rejected.", text)
         saved = (self.output_dir / "rejected_records.txt").read_text(encoding="utf-8")
         self.assertIn("fares.csv, line 2", saved)
 
@@ -116,6 +117,15 @@ class ValidateTests(CliTestCase):
         code, text = self.run_main("validate")
         self.assertEqual(code, EXIT_OK)
         self.assertIn("Profiles:     2 valid, 0 invalid", text)
+        self.assertIn("Result: the main data files and the profiles are valid.", text)
+
+    def test_rejections_in_the_file_of_invalid_examples_do_not_fail_the_check(self):
+        (self.data_dir / "fares_invalid.csv").write_text(
+            SMALL_DATA["fares.csv"].splitlines()[0] + "\n"
+            "SR-MAL-0001-B,SR-MAL-0001,basic,-19.00,no,no,0,0,10\n", encoding="utf-8")
+        code, text = self.run_main("validate")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Rejected rows: 1", text)
 
     def test_profile_with_bad_weights_is_reported_and_fails_the_check(self):
         (self.data_dir / "profiles.json").write_text(
@@ -227,6 +237,21 @@ class SearchTests(CliTestCase):
         _code, limited = self.run_main("search", *MALAGA, "--profile", "budget", "--top", "1")
         self.assertNotIn("#2  ", limited)
         self.assertIn("Showing 1 of 4 ranked offers", limited)
+
+    def test_one_weight_above_70_percent_must_be_confirmed(self):
+        weights = "price=85,duration=5,time=5,flex=5"
+        code, text = self.run_main("search", *MALAGA, "--weights", weights)
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Price has a weight of 85%, above 70%", text)
+        self.assertNotIn("#1", text)
+        code, text = self.run_main("search", *MALAGA, "--weights", weights, "--allow-dominant")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("The traveller confirmed this.", text)
+        self.assertIn("#1  SR-MAL-0001-B", text)
+
+    def test_destination_and_dates_are_listed_as_mandatory(self):
+        _code, text = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertIn("  - destination Malaga, departure on 2027-07-12 to 2027-07-14", text)
 
     def test_save_writes_the_same_text_to_a_file(self):
         target = self.output_dir / "malaga.txt"
@@ -373,7 +398,7 @@ class GuidedTests(CliTestCase):
             return self.run_main()
 
     def test_guided_search_then_booking(self):
-        code, text = self.run_guided([*self.ANSWERS, "1"])
+        code, text = self.run_guided([*self.ANSWERS, "1", "y"])
         self.assertEqual(code, EXIT_OK)
         self.assertIn("  - price per person at most 50.00 EUR", text)
         self.assertIn("  - ticket must be changeable", text)
@@ -381,9 +406,24 @@ class GuidedTests(CliTestCase):
         self.assertIn("BOOKING CONFIRMED", text)
         self.assertIn("Offer:          SR-MAL-0001-S", text)
         self.assertRegex(text, BOOKING_REFERENCE_PATTERN.pattern.strip("^$"))
+        self.assertIn("Seats left on departure SR-MAL-0001: 2", text)
+
+    def test_guided_booking_asks_for_confirmation_first(self):
+        code, text = self.run_guided([*self.ANSWERS, "1", "n"])
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Nothing booked.", text)
+        self.assertFalse((self.state_dir / "bookings.json").exists())
+
+    def test_guided_dominant_weight_is_asked_about(self):
+        answers = [*self.ANSWERS[:-1], "custom", "price=85,duration=5,time=5,flex=5", "n",
+                   "budget", ""]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Choose again.", text)
+        self.assertIn("weights from: profile 'budget'", text)
 
     def test_guided_booking_is_made_for_the_number_of_passengers_asked(self):
-        answers = [*self.ANSWERS[:3], "2", *self.ANSWERS[4:], "1"]
+        answers = [*self.ANSWERS[:3], "2", *self.ANSWERS[4:], "1", "y"]
         code, text = self.run_guided(answers)
         self.assertEqual(code, EXIT_OK)
         self.assertIn("Passengers:     2", text)
