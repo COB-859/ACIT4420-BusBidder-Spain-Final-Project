@@ -335,5 +335,50 @@ class GuidedTests(CliTestCase):
         self.assertIn("Stopped.", text)
 
 
+class CancelCommandTests(CliTestCase):
+    def book(self, offer: str, passengers: str = "1") -> str:
+        """Book an offer and return its reference."""
+        _code, text = self.run_main("book", "--offer", offer, "--passengers", passengers)
+        return next(
+            line.split()[-1] for line in text.splitlines() if line.startswith("Reference:")
+        )
+
+    def test_cancel_shows_the_refund_and_frees_the_seats(self):
+        reference = self.book("CE-MAL-0001-F", "2")       # 120.00 EUR, 90% refundable
+        code, text = self.run_main("cancel", "--ref", reference)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("BOOKING CANCELLED", text)
+        self.assertIn("Refund:         108.00 EUR (simulated)", text)
+        self.assertIn("Payment:        refunded (simulated)", text)
+        self.assertIn("Seats left on departure CE-MAL-0001: 20", text)
+
+    def test_cancelled_booking_stays_in_the_list(self):
+        reference = self.book("SR-MAL-0001-B")
+        self.run_main("cancel", "--ref", reference)
+        _code, text = self.run_main("bookings")
+        self.assertRegex(text, rf"{reference}.*cancelled")
+
+    def test_seats_come_back_in_search_after_a_cancellation(self):
+        reference = self.book("SR-MAL-0001-B", "3")
+        _code, full = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertNotIn("SR-MAL-0001-B", full)
+        self.run_main("cancel", "--ref", reference)
+        _code, after = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertIn("#1  SR-MAL-0001-B", after)
+
+    def test_cancel_errors(self):
+        reference = self.book("SR-MAL-0001-B")
+        self.run_main("cancel", "--ref", reference)
+        for ref, message in (
+            (reference, "already cancelled"),
+            ("BB-20261120-ZZZZZZ", "no booking with reference"),
+            ("nonsense", "must look like"),
+        ):
+            with self.subTest(ref=ref):
+                code, text = self.run_main("cancel", "--ref", ref)
+                self.assertEqual(code, EXIT_ERROR)
+                self.assertIn(message, text)
+
+
 if __name__ == "__main__":
     unittest.main()

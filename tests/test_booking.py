@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from busbidder.booking import BookingService, BookingStore, SeatLedger, random_code
-from busbidder.exceptions import BookingError, DataFileError, NoSeatsError
+from busbidder.exceptions import BookingError, BookingNotFoundError, DataFileError, NoSeatsError
 from busbidder.models import STATUS_CANCELLED, Booking
 from busbidder.validation import is_booking_reference
 from tests.helpers import make_departure, make_fare
@@ -106,7 +106,9 @@ class SeatLedgerTests(unittest.TestCase):
         self.assertEqual(SeatLedger(self.departures, []).seats_left("XX-XXX-0001"), 0)
 
 
-class BookingServiceTests(unittest.TestCase):
+class ServiceTestCase(unittest.TestCase):
+    """A booking service on a small data set, with a fixed clock and fixed codes."""
+
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
@@ -129,6 +131,9 @@ class BookingServiceTests(unittest.TestCase):
             now=lambda: datetime(2026, 11, 20, 9, 15, 42),
             make_code=make_code or (lambda: next(self.codes)),
         )
+
+
+class BookingServiceTests(ServiceTestCase):
 
     def test_booking_is_created_saved_and_confirmed(self):
         booking = self.service.book("SR-MAL-0001-F", 2)
@@ -207,6 +212,71 @@ class BookingServiceTests(unittest.TestCase):
             self.service.book("SR-MAL-0001-B", 1)
         self.assertIn("Booked BB-20261120-AAAAAA: offer SR-MAL-0001-B, 1 passenger(s), "
                       "25.00 EUR, 2 seat(s) left on SR-MAL-0001", logs.output[0])
+
+
+class CancelTests(ServiceTestCase):
+
+    def test_cancel_frees_the_seats_and_keeps_the_record(self):
+        booking = self.service.book("SR-MAL-0001-F", 2)
+        self.assertEqual(self.service.seats_left("SR-MAL-0001"), 1)
+        cancelled = self.service.cancel(booking.reference)
+        self.assertEqual(cancelled.status, "cancelled")
+        self.assertEqual(self.service.seats_left("SR-MAL-0001"), 3)
+        saved = self.store.load()
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(saved[0].status, "cancelled")
+
+    def test_refund_follows_the_stored_fare_conditions(self):
+        booking = self.service.book("SR-MAL-0001-F", 2)   # 91.00 EUR, 80% refundable
+        cancelled = self.service.cancel(booking.reference)
+        self.assertEqual(cancelled.refund_amount, 72.8)
+        self.assertEqual(cancelled.payment_status, "refunded (simulated)")
+
+    def test_non_refundable_fare_gets_no_refund(self):
+        booking = self.service.book("SR-MAL-0001-B", 1)
+        cancelled = self.service.cancel(booking.reference)
+        self.assertEqual(cancelled.refund_amount, 0.0)
+        self.assertEqual(cancelled.payment_status, "not refunded (the fare is not refundable)")
+
+    def test_refund_uses_the_booking_copy_even_if_the_data_changes(self):
+        booking = self.service.book("SR-MAL-0001-F", 1)
+        self.fares["SR-MAL-0001-F"] = make_fare("SR-MAL-0001", "F", price=45.5, changeable=True)
+        cancelled = self.make_service().cancel(booking.reference)
+        self.assertEqual(cancelled.refund_amount, 36.4)
+
+    def test_cancelling_twice_is_an_error(self):
+        booking = self.service.book("SR-MAL-0001-B", 1)
+        self.service.cancel(booking.reference)
+        with self.assertRaises(BookingError) as caught:
+            self.service.cancel(booking.reference)
+        self.assertIn("already cancelled", str(caught.exception))
+
+    def test_unknown_reference_is_not_found(self):
+        with self.assertRaises(BookingNotFoundError):
+            self.service.cancel("BB-20261120-ZZZZZZ")
+
+    def test_malformed_reference_is_rejected(self):
+        for reference in ("12345", "BB-2026-AAAAAA", ""):
+            with self.subTest(reference=reference), self.assertRaises(BookingError) as caught:
+                self.service.cancel(reference)
+            self.assertIn("must look like", str(caught.exception))
+
+    def test_reference_is_accepted_in_lower_case(self):
+        booking = self.service.book("SR-MAL-0001-B", 1)
+        self.assertEqual(self.service.cancel(booking.reference.lower()).status, "cancelled")
+
+    def test_a_cancelled_reference_is_never_reused(self):
+        first = self.service.book("SR-MAL-0001-B", 1)     # code AAAAAA
+        self.service.cancel(first.reference)
+        second = self.service.book("SR-MAL-0001-B", 1)    # draws AAAAAA again, then BBBBBB
+        self.assertEqual(second.reference, "BB-20261120-BBBBBB")
+
+    def test_cancellation_is_recorded_in_the_log(self):
+        booking = self.service.book("SR-MAL-0001-F", 1)
+        with self.assertLogs("busbidder.booking", level="INFO") as logs:
+            self.service.cancel(booking.reference)
+        self.assertIn("Cancelled BB-20261120-AAAAAA: 1 seat(s) freed on SR-MAL-0001, refund 36.40 EUR",
+                      logs.output[0])
 
 
 if __name__ == "__main__":

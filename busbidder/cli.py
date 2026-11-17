@@ -260,6 +260,19 @@ def run_book(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def run_cancel(args: argparse.Namespace) -> int:
+    """Cancel one booking and print what happened to it."""
+    session = open_session(args)
+    service = make_service(session)
+    booking = service.cancel(args.ref)
+    lines = format_confirmation(booking)
+    lines.append(
+        f"Seats left on departure {booking.departure_id}: {service.seats_left(booking.departure_id)}"
+    )
+    emit(lines)
+    return EXIT_OK
+
+
 def run_bookings(args: argparse.Namespace) -> int:
     """List the saved bookings."""
     emit(format_bookings(make_service(open_session(args)).bookings()))
@@ -400,6 +413,7 @@ COMMANDS = {
     "compare": run_compare,
     "book": run_book,
     "bookings": run_bookings,
+    "cancel": run_cancel,
 }
 
 
@@ -474,6 +488,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     bookings = commands.add_parser("bookings", help="list the saved bookings")
     _add_folder_options(bookings, top_level=False)
+
+    cancel = commands.add_parser("cancel", help="cancel a booking (simulated refund)")
+    _add_folder_options(cancel, top_level=False)
+    cancel.add_argument("--ref", required=True, help="booking reference, for example BB-20261120-7K3QX9")
     return parser
 
 

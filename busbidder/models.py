@@ -31,6 +31,7 @@ STATUS_CONFIRMED = "confirmed"
 STATUS_CANCELLED = "cancelled"
 PAYMENT_SIMULATED = "paid (simulated)"
 PAYMENT_REFUNDED = "refunded (simulated)"
+PAYMENT_NOT_REFUNDED = "not refunded (the fare is not refundable)"
 
 
 def format_duration(minutes: int) -> str:

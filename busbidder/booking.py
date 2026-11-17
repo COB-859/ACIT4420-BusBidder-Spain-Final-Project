@@ -16,8 +16,16 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
 
-from busbidder.exceptions import BookingError, DataFileError, NoSeatsError
-from busbidder.models import Booking, Departure, Fare
+from busbidder.exceptions import BookingError, BookingNotFoundError, DataFileError, NoSeatsError
+from busbidder.models import (
+    PAYMENT_NOT_REFUNDED,
+    PAYMENT_REFUNDED,
+    STATUS_CANCELLED,
+    Booking,
+    Departure,
+    Fare,
+)
+from busbidder.validation import is_booking_reference
 
 logger = logging.getLogger("busbidder.booking")
 
@@ -102,7 +110,7 @@ def random_code() -> str:
 
 
 class BookingService:
-    """Makes and lists simulated bookings.
+    """Makes, lists and cancels simulated bookings.
 
     The clock and the code generator can be replaced, so tests can fix the
     date and force two bookings to draw the same code.
@@ -164,6 +172,34 @@ class BookingService:
             "Booked %s: offer %s, %d passenger(s), %.2f EUR, %d seat(s) left on %s",
             booking.reference, fare.offer_id, passengers, booking.total_price,
             left - passengers, departure.departure_id,
+        )
+        return booking
+
+    def cancel(self, reference: str) -> Booking:
+        """Cancel a booking, free its seats and work out the simulated refund.
+
+        The booking is kept with the status cancelled, so its reference is
+        never given out again.
+        """
+        wanted = reference.strip().upper()
+        if not is_booking_reference(wanted):
+            raise BookingError(f"booking reference must look like BB-20261120-7K3QX9: {reference!r}")
+        bookings = self._store.load()
+        booking = next((saved for saved in bookings if saved.reference == wanted), None)
+        if booking is None:
+            raise BookingNotFoundError(f"no booking with reference {wanted}")
+        if not booking.is_active:
+            raise BookingError(f"booking {wanted} is already cancelled")
+        # The refund follows the fare conditions stored with the booking,
+        # not the data files, which may have changed since.
+        refund = round(booking.total_price * booking.fare.refund_percent / 100, 2)
+        booking.status = STATUS_CANCELLED
+        booking.refund_amount = refund
+        booking.payment_status = PAYMENT_REFUNDED if refund > 0 else PAYMENT_NOT_REFUNDED
+        self._store.save(bookings)
+        logger.info(
+            "Cancelled %s: %d seat(s) freed on %s, refund %.2f EUR",
+            wanted, booking.passengers, booking.departure_id, refund,
         )
         return booking
 
