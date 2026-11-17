@@ -4,7 +4,9 @@ import unittest
 
 from busbidder.constraints import filter_offers
 from busbidder.display import (
+    format_bookings,
     format_comparison,
+    format_confirmation,
     format_filter,
     format_preferences,
     format_ranking,
@@ -14,6 +16,7 @@ from busbidder.display import (
 )
 from busbidder.ranking import check_weights, rank_offers
 from tests.helpers import make_departure, make_offer, make_request
+from tests.test_booking import make_booking
 from tests.test_ranking import SPEC_WEIGHTS, three_offers
 
 SEATS = {"SR-MAL-0001": 12, "SR-MAL-0002": 5, "SR-MAL-0003": 1}
@@ -122,6 +125,29 @@ class ComparisonTextTests(unittest.TestCase):
         self.assertIn("Profile 'cheap': cheap traveller", text)
         self.assertIn("Weights: Price 70%, Duration 10%, Departure 10%, Flexibility 10%", text)
         self.assertIn("next: #2", text)
+
+
+class BookingTextTests(unittest.TestCase):
+    def test_confirmation_shows_reference_journey_price_and_conditions(self):
+        booking = make_booking(letter="S", passengers=2)
+        text = text_of(format_confirmation(booking))
+        self.assertIn("BOOKING CONFIRMED", text)
+        self.assertIn("Reference:      BB-20261120-AAAAAA", text)
+        self.assertIn("Journey:        Madrid to Malaga with SolRuta", text)
+        self.assertIn("Departure:      Mon 12 Jul 2027 08:00", text)
+        self.assertIn("Offer:          SR-MAL-0001-S (standard fare)", text)
+        self.assertIn("Total price:    60.00 EUR (30.00 EUR per person)", text)
+        self.assertIn("Payment:        paid (simulated)", text)
+        self.assertIn("changeable:   no", text)
+        self.assertIn("luggage:      20 kg per person", text)
+        self.assertIn("No real payment was taken", text)
+        self.assertNotIn("Refund:", text)
+
+    def test_booking_list(self):
+        self.assertEqual(format_bookings([]), ["No bookings saved."])
+        text = text_of(format_bookings([make_booking(), make_booking("BB-20261120-BBBBBB", status="cancelled")]))
+        self.assertRegex(text, r"BB-20261120-AAAAAA\s+SR-MAL-0001-B\s+Mon 12 Jul 08:00\s+1\s+30\.00 EUR\s+confirmed")
+        self.assertRegex(text, r"BB-20261120-BBBBBB.*cancelled")
 
 
 if __name__ == "__main__":

@@ -10,16 +10,23 @@ from __future__ import annotations
 import json
 import logging
 import os
+import secrets
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
+from datetime import datetime
 from pathlib import Path
 
-from busbidder.exceptions import DataFileError
-from busbidder.models import Booking, Departure
+from busbidder.exceptions import BookingError, DataFileError, NoSeatsError
+from busbidder.models import Booking, Departure, Fare
 
 logger = logging.getLogger("busbidder.booking")
 
 BOOKINGS_FILE = "bookings.json"
+
+# The same letters and digits the reference pattern allows: no I, O, 0 or 1.
+REFERENCE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+REFERENCE_CODE_LENGTH = 6
+MAX_REFERENCE_ATTEMPTS = 100
 
 
 class BookingStore:
@@ -87,3 +94,83 @@ class SeatLedger:
     def all_seats_left(self) -> dict[str, int]:
         """Return the seats left for every departure."""
         return {departure_id: self.seats_left(departure_id) for departure_id in self._departures}
+
+
+def random_code() -> str:
+    """Return six random characters for a booking reference."""
+    return "".join(secrets.choice(REFERENCE_ALPHABET) for _ in range(REFERENCE_CODE_LENGTH))
+
+
+class BookingService:
+    """Makes and lists simulated bookings.
+
+    The clock and the code generator can be replaced, so tests can fix the
+    date and force two bookings to draw the same code.
+    """
+
+    def __init__(
+        self,
+        store: BookingStore,
+        departures: Mapping[str, Departure],
+        fares: Mapping[str, Fare],
+        now: Callable[[], datetime] = datetime.now,
+        make_code: Callable[[], str] = random_code,
+    ) -> None:
+        """Remember where bookings are saved and what can be booked."""
+        self._store = store
+        self._departures = departures
+        self._fares = fares
+        self._now = now
+        self._make_code = make_code
+
+    def bookings(self) -> list[Booking]:
+        """Return all saved bookings, cancelled ones included."""
+        return self._store.load()
+
+    def seats_left(self, departure_id: str) -> int:
+        """Return the seats still free on a departure."""
+        return SeatLedger(self._departures, self._store.load()).seats_left(departure_id)
+
+    def book(self, offer_id: str, passengers: int) -> Booking:
+        """Book an offer for a number of passengers and save the booking."""
+        if passengers < 1:
+            raise BookingError(f"passengers must be at least 1: {passengers}")
+        fare = self._fares.get(offer_id.strip().upper())
+        if fare is None:
+            raise BookingError(f"unknown offer: {offer_id!r}")
+        departure = self._departures[fare.departure_id]
+        bookings = self._store.load()
+        # Seats are counted again here, because another booking may have
+        # been saved since the traveller saw the ranking.
+        left = SeatLedger(self._departures, bookings).seats_left(departure.departure_id)
+        if left < passengers:
+            raise NoSeatsError(
+                f"departure {departure.departure_id} has {left} seat(s) left, {passengers} requested"
+            )
+        moment = self._now()
+        booking = Booking(
+            reference=self._new_reference(moment, {saved.reference for saved in bookings}),
+            passengers=passengers,
+            total_price=round(fare.price * passengers, 2),
+            fare=fare,
+            company_name=departure.company.name,
+            destination_name=departure.destination.name,
+            departure=departure.departure,
+            arrival=departure.arrival,
+            booked_at=moment.replace(second=0, microsecond=0),
+        )
+        self._store.save([*bookings, booking])
+        logger.info(
+            "Booked %s: offer %s, %d passenger(s), %.2f EUR, %d seat(s) left on %s",
+            booking.reference, fare.offer_id, passengers, booking.total_price,
+            left - passengers, departure.departure_id,
+        )
+        return booking
+
+    def _new_reference(self, moment: datetime, taken: set[str]) -> str:
+        """Return a reference that no saved booking uses."""
+        for _attempt in range(MAX_REFERENCE_ATTEMPTS):
+            reference = f"BB-{moment:%Y%m%d}-{self._make_code()}"
+            if reference not in taken:
+                return reference
+        raise BookingError("could not create a unique booking reference")

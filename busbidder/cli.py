@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import argparse
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from busbidder import __version__
-from busbidder.booking import BOOKINGS_FILE, BookingStore, SeatLedger
+from busbidder.booking import BOOKINGS_FILE, BookingService, BookingStore, SeatLedger
 from busbidder.constraints import filter_offers
 from busbidder.display import (
+    format_bookings,
     format_comparison,
+    format_confirmation,
     format_filter,
     format_preferences,
     format_ranking,
@@ -30,7 +32,7 @@ from busbidder.loader import (
 )
 from busbidder.logsetup import close_logging, configure_logging
 from busbidder.models import Destination, TimeBand, TravellerProfile, TravelRequest
-from busbidder.ranking import check_weights, parse_weights, rank_offers
+from busbidder.ranking import ScoredOffer, check_weights, parse_weights, rank_offers
 from busbidder.validation import parse_date
 
 logger = logging.getLogger("busbidder.cli")
@@ -42,6 +44,11 @@ DEFAULT_STATE_DIR = Path("state")
 DEFAULT_LOG_DIR = Path("logs")
 DEFAULT_OUTPUT_DIR = Path("output")
 DEFAULT_TOP = 10
+CUSTOM_WEIGHTS = "custom"
+
+# The guided mode reads answers through a function like input(), so tests
+# can supply the answers.
+Reader = Callable[[str], str]
 
 
 @dataclass
@@ -156,33 +163,54 @@ def run_validate(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def run_search(args: argparse.Namespace) -> int:
-    """Filter and rank the offers for one request and one set of weights."""
-    session = open_session(args)
-    request = request_from_args(args, session)
-    if args.weights is not None:
-        weights = check_weights(parse_weights(args.weights))
-        source = "typed with --weights"
-    else:
-        profile = find_profile(args.profile, session.profiles)
-        weights = check_weights(profile.weights)
-        source = f"profile '{profile.key}' ({profile.description})"
+def weights_from_profile(key: str, session: Session) -> tuple[dict[str, float], str]:
+    """Return the checked weights of a profile and a text saying where they come from."""
+    profile = find_profile(key, session.profiles)
+    return check_weights(profile.weights), f"profile '{profile.key}' ({profile.description})"
+
+
+def weights_from_text(text: str) -> tuple[dict[str, float], str]:
+    """Return checked weights typed by the traveller."""
+    return check_weights(parse_weights(text)), "typed by the traveller"
+
+
+def search_report(
+    session: Session,
+    request: TravelRequest,
+    weights: Mapping[str, float],
+    source: str,
+    top: int = DEFAULT_TOP,
+    show_removed: bool = False,
+) -> tuple[list[str], list[ScoredOffer]]:
+    """Filter and rank the offers; return the text to show and the ranking."""
     seats_left = session.ledger.all_seats_left()
     result = filter_offers(session.data.offers(), request, seats_left)
     ranked = rank_offers(result.accepted, request, weights)
     lines = format_request(request)
     lines += format_preferences(request, weights, source)
     lines += format_filter(result)
-    if args.show_removed and result.removed:
+    if show_removed and result.removed:
         lines += format_removed(result)
-    lines += format_ranking(ranked, weights, seats_left, args.top)
-    emit(lines, args.save)
+    lines += format_ranking(ranked, weights, seats_left, top)
     logger.info(
         "Search: %s, %s to %s, weights from %s: %d in scope, %d removed, %d ranked, top offer %s",
         request.destination.name, request.date_from, request.date_to, source,
         result.in_scope, len(result.removed), len(ranked),
         ranked[0].offer.offer_id if ranked else "none",
     )
+    return lines, ranked
+
+
+def run_search(args: argparse.Namespace) -> int:
+    """Filter and rank the offers for one request and one set of weights."""
+    session = open_session(args)
+    request = request_from_args(args, session)
+    if args.weights is not None:
+        weights, source = weights_from_text(args.weights)
+    else:
+        weights, source = weights_from_profile(args.profile, session)
+    lines, _ranked = search_report(session, request, weights, source, args.top, args.show_removed)
+    emit(lines, args.save)
     return EXIT_OK
 
 
@@ -214,10 +242,164 @@ def run_compare(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def make_service(session: Session) -> BookingService:
+    """Return the booking service for the loaded data."""
+    return BookingService(session.store, session.data.departures, session.data.fares)
+
+
+def run_book(args: argparse.Namespace) -> int:
+    """Book one offer and print the confirmation."""
+    session = open_session(args)
+    service = make_service(session)
+    booking = service.book(args.offer, args.passengers)
+    lines = format_confirmation(booking)
+    lines.append(
+        f"Seats left on departure {booking.departure_id}: {service.seats_left(booking.departure_id)}"
+    )
+    emit(lines)
+    return EXIT_OK
+
+
+def run_bookings(args: argparse.Namespace) -> int:
+    """List the saved bookings."""
+    emit(format_bookings(make_service(open_session(args)).bookings()))
+    return EXIT_OK
+
+
+def ask(read: Reader, prompt: str, convert: Callable[[str], object]):
+    """Ask one question until the answer can be used."""
+    while True:
+        answer = read(prompt).strip()
+        try:
+            return convert(answer)
+        except (BusBidderError, ValueError) as error:
+            print(f"  {error}. Please answer again.")
+
+
+def optional(convert: Callable[[str], object]) -> Callable[[str], object]:
+    """Wrap a converter so that an empty answer means 'no value'."""
+    return lambda text: None if not text else convert(text)
+
+
+def to_number(text: str, kind: type, minimum: float, what: str):
+    """Return the answer as a number of the given kind, at least minimum."""
+    try:
+        number = kind(text)
+    except ValueError:
+        raise ValueError(f"{what} must be a number") from None
+    if number < minimum:
+        raise ValueError(f"{what} must be at least {minimum}")
+    return number
+
+
+def to_yes_no(text: str) -> bool:
+    """Return True for y or yes, False for n, no or an empty answer."""
+    answer = text.lower()
+    if answer in ("y", "yes"):
+        return True
+    if answer in ("", "n", "no"):
+        return False
+    raise ValueError("answer y or n")
+
+
+def ask_request(session: Session, read: Reader) -> TravelRequest:
+    """Ask for the journey and the mandatory conditions, one question at a time."""
+    destination = ask(read, "Destination: ",
+                      lambda text: find_destination(text, session.data.destinations))
+    first_day = ask(read, "First travel date (YYYY-MM-DD): ",
+                    lambda text: parse_date(text, "first travel date"))
+
+    def last_day_from(text: str):
+        day = parse_date(text, "last travel date")
+        if day < first_day:
+            raise ValueError("last travel date is before the first travel date")
+        return day
+
+    last_day = ask(read, "Last travel date (YYYY-MM-DD): ", last_day_from)
+    passengers = ask(read, "Passengers [1]: ",
+                     lambda text: 1 if not text else to_number(text, int, 1, "passengers"))
+    preferred = ask(read, "Preferred departure (morning, afternoon, evening, night or HH:MM): ",
+                    TimeBand.from_text)
+    print("Mandatory conditions: an offer that fails one is removed. Press Enter to skip one.")
+    budget = ask(read, "  Highest price per person in EUR: ",
+                 optional(lambda text: to_number(text, float, 0.01, "budget")))
+    max_transfers = ask(read, "  Highest number of transfers: ",
+                        optional(lambda text: to_number(text, int, 0, "transfers")))
+    max_duration = ask(read, "  Longest journey in minutes: ",
+                       optional(lambda text: to_number(text, int, 1, "journey time")))
+    changeable = ask(read, "  Ticket must be changeable? (y/N): ", to_yes_no)
+    refundable = ask(read, "  Ticket must be refundable? (y/N): ", to_yes_no)
+    min_luggage = ask(read, "  Lowest luggage allowance in kg: ",
+                      optional(lambda text: to_number(text, int, 0, "luggage")))
+    return TravelRequest(
+        destination=destination, date_from=first_day, date_to=last_day,
+        preferred_departure=preferred, passengers=passengers, budget=budget,
+        max_transfers=max_transfers, max_duration_minutes=max_duration,
+        require_changeable=changeable, require_refundable=refundable,
+        min_luggage_kg=min_luggage,
+    )
+
+
+def ask_weights(session: Session, read: Reader) -> tuple[dict[str, float], str]:
+    """Ask for a profile, or for the traveller's own weights."""
+    print("Preferences: how much each criterion counts. Choose a profile:")
+    for profile in session.profiles.values():
+        print(f"  {profile.key}: {profile.description}")
+    print(f"  {CUSTOM_WEIGHTS}: type your own weights")
+
+    def choose(text: str):
+        if text.lower() == CUSTOM_WEIGHTS:
+            return None
+        return weights_from_profile(text, session)
+
+    chosen = ask(read, "Profile: ", choose)
+    if chosen is not None:
+        return chosen
+    return ask(read, "Weights, for example price=40,duration=25,time=15,flex=20: ", weights_from_text)
+
+
+def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
+    """Ask for a request, show the ranking and offer to book one of the offers."""
+    # input is looked up here, not in the signature, so a test can replace it.
+    read = read or input
+    session = open_session(args)
+    print("BusBidder Spain: guided search for a bus from Madrid. Press Ctrl+C to stop.")
+    names = ", ".join(destination.name for destination in session.data.destinations.values())
+    print(f"Destinations: {names}")
+    try:
+        request = ask_request(session, read)
+        weights, source = ask_weights(session, read)
+        print()
+        lines, ranked = search_report(session, request, weights, source)
+        emit(lines)
+        if not ranked:
+            return EXIT_OK
+        shown = min(len(ranked), DEFAULT_TOP)
+
+        def rank_from(text: str) -> int:
+            rank = to_number(text, int, 1, "rank number")
+            if rank > shown:
+                raise ValueError(f"rank number must be at most {shown}")
+            return rank
+
+        rank = ask(read, f"\nRank number to book (1 to {shown}), or Enter to stop: ", optional(rank_from))
+        if rank is None:
+            print("Nothing booked.")
+            return EXIT_OK
+        booking = make_service(session).book(ranked[rank - 1].offer.offer_id, request.passengers)
+        emit(format_confirmation(booking))
+        return EXIT_OK
+    except (EOFError, KeyboardInterrupt):
+        print("\nStopped.")
+        return EXIT_OK
+
+
 COMMANDS = {
     "validate": run_validate,
     "search": run_search,
     "compare": run_compare,
+    "book": run_book,
+    "bookings": run_bookings,
 }
 
 
@@ -258,7 +440,8 @@ def build_parser() -> argparse.ArgumentParser:
     """Return the argument parser for the program."""
     parser = argparse.ArgumentParser(
         prog="main.py",
-        description="BusBidder Spain: filter, rank and book simulated bus offers.",
+        description="BusBidder Spain: filter, rank and book simulated bus offers. "
+                    "Run without a command for the guided mode.",
     )
     parser.add_argument("--version", action="version", version=f"BusBidder Spain {__version__}")
     _add_folder_options(parser, top_level=True)
@@ -283,6 +466,14 @@ def build_parser() -> argparse.ArgumentParser:
     _add_request_options(compare)
     compare.add_argument("--profiles", nargs="+", metavar="PROFILE",
                          help="profiles to compare (default: all)")
+
+    book = commands.add_parser("book", help="book an offer (simulated, no payment)")
+    _add_folder_options(book, top_level=False)
+    book.add_argument("--offer", required=True, help="offer ID from a ranking, for example SR-MAL-0001-B")
+    book.add_argument("--passengers", type=int, default=1, help="number of passengers (default: 1)")
+
+    bookings = commands.add_parser("bookings", help="list the saved bookings")
+    _add_folder_options(bookings, top_level=False)
     return parser
 
 
@@ -294,8 +485,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         log.info("Command: %s", args.command or "(none)")
         if args.command is None:
-            parser.print_help()
-            return EXIT_OK
+            return run_guided(args)
         return COMMANDS[args.command](args)
     except BusBidderError as error:
         log.error("%s", error)

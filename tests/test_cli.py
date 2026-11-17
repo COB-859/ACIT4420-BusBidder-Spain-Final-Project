@@ -6,7 +6,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from unittest import mock
+
 from busbidder.cli import EXIT_ERROR, EXIT_OK, main
+from busbidder.validation import BOOKING_REFERENCE_PATTERN
 from tests.helpers import SMALL_DATA, write_data_dir
 
 
@@ -35,10 +38,13 @@ class CliTestCase(unittest.TestCase):
 
 
 class StartTests(CliTestCase):
-    def test_no_command_prints_help_and_succeeds(self):
-        code, text = self.run_main()
-        self.assertEqual(code, EXIT_OK)
-        self.assertIn("BusBidder Spain", text)
+    def test_help_lists_the_commands(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as caught:
+            main(["--help"])
+        self.assertEqual(caught.exception.code, 0)
+        for command in ("validate", "search", "compare", "book", "bookings"):
+            self.assertIn(command, output.getvalue())
 
     def test_version_option_exits_with_zero(self):
         output = io.StringIO()
@@ -109,7 +115,7 @@ class SearchTests(CliTestCase):
     def test_search_with_typed_weights(self):
         code, text = self.run_main("search", *MALAGA, "--weights", "price=10,duration=10,time=10,flex=70")
         self.assertEqual(code, EXIT_OK)
-        self.assertIn("weights from: typed with --weights", text)
+        self.assertIn("weights from: typed by the traveller", text)
         self.assertIn("#1  CE-MAL-0001-F", text)
 
     def test_mandatory_conditions_remove_offers(self):
@@ -202,6 +208,131 @@ class CompareTests(CliTestCase):
         self.assertEqual(code, EXIT_OK)
         self.assertIn("No offer meets every mandatory condition", text)
         self.assertNotIn("Profile comparison", text)
+
+
+class BookTests(CliTestCase):
+    def test_book_prints_a_confirmation_and_saves_the_booking(self):
+        code, text = self.run_main("book", "--offer", "SR-MAL-0001-S", "--passengers", "2")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("BOOKING CONFIRMED", text)
+        self.assertRegex(text, r"Reference:      BB-\d{8}-[A-HJ-NP-Z2-9]{6}")
+        self.assertIn("Total price:    60.00 EUR", text)
+        self.assertIn("Seats left on departure SR-MAL-0001: 1", text)
+        self.assertTrue((self.state_dir / "bookings.json").is_file())
+
+    def test_a_booking_reduces_the_seats_shown_by_search_for_every_fare(self):
+        _code, before = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertIn("3 seat(s) left", before)
+        self.run_main("book", "--offer", "SR-MAL-0001-S", "--passengers", "2")
+        _code, after = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertNotIn("3 seat(s) left", after)
+        self.assertEqual(after.count("direct, 1 seat(s) left") + after.count("1 transfer(s), 1 seat(s) left"), 2)
+
+    def test_departure_filled_by_bookings_disappears_from_search(self):
+        self.run_main("book", "--offer", "SR-MAL-0001-B", "--passengers", "3")
+        code, text = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertEqual(code, EXIT_OK)
+        self.assertNotIn("#1  SR-MAL-0001", text)
+        self.assertIn("seats 3", text)
+
+    def test_booking_more_than_the_seats_left_is_an_error(self):
+        code, text = self.run_main("book", "--offer", "SR-MAL-0001-B", "--passengers", "4")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("has 3 seat(s) left, 4 requested", text)
+        self.assertFalse((self.state_dir / "bookings.json").exists())
+
+    def test_unknown_offer_is_an_error(self):
+        code, text = self.run_main("book", "--offer", "XX-XXX-0001-B")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("unknown offer", text)
+
+    def test_bookings_lists_what_was_booked(self):
+        code, text = self.run_main("bookings")
+        self.assertEqual((code, text.strip()), (EXIT_OK, "No bookings saved."))
+        self.run_main("book", "--offer", "CE-MAL-0001-F")
+        code, text = self.run_main("bookings")
+        self.assertIn("CE-MAL-0001-F", text)
+        self.assertIn("confirmed", text)
+
+    def test_booking_is_recorded_in_the_log(self):
+        self.run_main("book", "--offer", "SR-MAL-0001-S")
+        self.assertIn("INFO busbidder.booking: Booked BB-", self.read_log())
+
+    def test_broken_bookings_file_is_reported(self):
+        self.state_dir.mkdir()
+        (self.state_dir / "bookings.json").write_text("{broken", encoding="utf-8")
+        code, text = self.run_main("bookings")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("cannot read bookings file", text)
+
+
+class GuidedTests(CliTestCase):
+    ANSWERS = ["Malaga", "2027-07-12", "2027-07-14", "", "morning",
+               "50", "", "", "y", "", "", "budget"]
+
+    def run_guided(self, answers):
+        """Run the guided mode with the given answers typed in order."""
+        with mock.patch("builtins.input", side_effect=answers):
+            return self.run_main()
+
+    def test_guided_search_then_booking(self):
+        code, text = self.run_guided([*self.ANSWERS, "1"])
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("  - price per person at most 50.00 EUR", text)
+        self.assertIn("  - ticket must be changeable", text)
+        self.assertIn("#1  SR-MAL-0001-S", text)
+        self.assertIn("BOOKING CONFIRMED", text)
+        self.assertIn("Offer:          SR-MAL-0001-S", text)
+        self.assertRegex(text, BOOKING_REFERENCE_PATTERN.pattern.strip("^$"))
+
+    def test_enter_at_the_end_books_nothing(self):
+        code, text = self.run_guided([*self.ANSWERS, ""])
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Nothing booked.", text)
+        self.assertFalse((self.state_dir / "bookings.json").exists())
+
+    def test_bad_answers_are_asked_again(self):
+        answers = ["Atlantis", "Malaga", "12 July", "2027-07-12", "2027-07-01", "2027-07-14",
+                   "zero", "0", "2", "brunch", "morning", "-5", "50", "", "", "maybe", "y", "", "",
+                   "luxury", "budget", "99", ""]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        for message in (
+            "unknown destination: 'Atlantis'",
+            "first travel date must look like 2027-07-12",
+            "last travel date is before the first travel date",
+            "passengers must be a number",
+            "passengers must be at least 1",
+            "preferred departure must be one of",
+            "budget must be at least 0.01",
+            "answer y or n",
+            "unknown profile: 'luxury'",
+            "rank number must be at most",
+        ):
+            with self.subTest(message=message):
+                self.assertIn(message, text)
+        self.assertIn("2 passenger(s)", text)
+        self.assertIn("Nothing booked.", text)
+
+    def test_custom_weights_can_be_typed(self):
+        answers = [*self.ANSWERS[:-1], "custom", "price=100", "price=10,duration=10,time=10,flex=70", ""]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("must use price, duration, time and flex", text)
+        self.assertIn("weights from: typed by the traveller", text)
+
+    def test_no_offer_left_ends_without_asking_to_book(self):
+        answers = ["Malaga", "2027-07-12", "2027-07-14", "", "morning", "5", "", "", "", "", "", "budget"]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("No offer meets every mandatory condition", text)
+        self.assertNotIn("Rank number", text)
+
+    def test_end_of_input_stops_quietly(self):
+        with mock.patch("builtins.input", side_effect=EOFError):
+            code, text = self.run_main()
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Stopped.", text)
 
 
 if __name__ == "__main__":

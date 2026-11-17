@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from busbidder.constraints import FilterResult, describe_constraints
 from busbidder.criteria import CRITERIA
 from busbidder.explain import explain_top
-from busbidder.models import Departure, TravelRequest, format_duration
+from busbidder.models import Booking, Departure, TravelRequest, format_duration
 from busbidder.ranking import ScoredOffer, dominant_criterion
 
 DAY_FORMAT = "%a %d %b %H:%M"
@@ -172,4 +172,47 @@ def format_comparison(
         if ranked:
             lines.append("")
             lines.extend(f"  {line}" for line in explain_top(ranked))
+    return lines
+
+
+def format_confirmation(booking: Booking) -> list[str]:
+    """Return the booking confirmation."""
+    fare = booking.fare
+    arrival_format = "%H:%M" if booking.arrival.date() == booking.departure.date() else DAY_FORMAT
+    change = f"yes, fee {fare.change_fee:.2f} EUR" if fare.changeable else "no"
+    refund = f"yes, {fare.refund_percent:g}% of the price" if fare.refundable else "no"
+    lines = [
+        RULE,
+        f"BOOKING {booking.status.upper()}",
+        RULE,
+        f"Reference:      {booking.reference}",
+        f"Journey:        Madrid to {booking.destination_name} with {booking.company_name}",
+        f"Departure:      {booking.departure:%a %d %b %Y %H:%M}",
+        f"Arrival:        {booking.arrival:{arrival_format}}",
+        f"Offer:          {booking.offer_id} ({fare.fare_type} fare)",
+        f"Passengers:     {booking.passengers}",
+        f"Total price:    {booking.total_price:.2f} EUR ({fare.price:.2f} EUR per person)",
+        f"Payment:        {booking.payment_status}",
+        "Fare conditions stored with this booking:",
+        f"  changeable:   {change}",
+        f"  refundable:   {refund}",
+        f"  luggage:      {fare.luggage_kg} kg per person",
+        f"Booked at:      {booking.booked_at:%Y-%m-%d %H:%M}",
+    ]
+    if booking.refund_amount is not None:
+        lines.append(f"Refund:         {booking.refund_amount:.2f} EUR (simulated)")
+    lines.append("No real payment was taken. This is a simulation.")
+    return lines
+
+
+def format_bookings(bookings: Sequence[Booking]) -> list[str]:
+    """Return the saved bookings as a table."""
+    if not bookings:
+        return ["No bookings saved."]
+    lines = [f"{'Reference':<20}{'Offer':<15}{'Departure':<18}{'Pass.':>5} {'Total':>10}  Status"]
+    for booking in bookings:
+        lines.append(
+            f"{booking.reference:<20}{booking.offer_id:<15}{booking.departure:{DAY_FORMAT}}  "
+            f"{booking.passengers:>5} {booking.total_price:>6.2f} EUR  {booking.status}"
+        )
     return lines
