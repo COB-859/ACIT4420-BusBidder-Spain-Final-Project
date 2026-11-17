@@ -1,0 +1,64 @@
+Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)
+
+Mandatory conditions (an offer that fails one is removed before ranking):
+  - at least 1 seat(s) left
+  - price per person at most 50.00 EUR
+  - at most 1 transfer(s)
+  - ticket must be changeable
+
+Preferences (scored from 0 to 100 and weighted; they never remove an offer):
+  - Price 40%, Duration 25%, Departure 15%, Flexibility 20%
+  - preferred departure: morning (06:00 to 12:00)
+  - weights from: typed by the traveller
+
+Offers for this city and these dates: 47
+Removed by a mandatory condition: 30
+  removed per condition (an offer can fail several): seats 2, budget 16, changeable 13
+Offers left to rank: 17
+
+------------------------------------------------------------------------
+Ranked offers, best first (value, points, weight, contribution)
+------------------------------------------------------------------------
+#1  CL-MAL-0007-S  CostaLink, standard fare   TOTAL 65.82
+    Tue 13 Jul 08:30 -> 15:00 (6h 30m), direct, 44 seat(s) left, luggage 20 kg
+    Price       38.19 EUR                   58.8 pts x    40% =  23.51
+    Duration    6h 30m                      69.2 pts x    25% =  17.31
+    Departure   08:30                      100.0 pts x    15% =  15.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#2  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 65.40
+    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
+    Price       43.38 EUR                   32.7 pts x    40% =  13.09
+    Duration    6h 30m                      69.2 pts x    25% =  17.31
+    Departure   10:15                      100.0 pts x    15% =  15.00
+    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+
+#3  CL-MAL-0009-S  CostaLink, standard fare   TOTAL 61.81
+    Wed 14 Jul 09:15 -> 15:45 (6h 30m), direct, 13 seat(s) left, luggage 20 kg
+    Price       40.19 EUR                   48.7 pts x    40% =  19.50
+    Duration    6h 30m                      69.2 pts x    25% =  17.31
+    Departure   09:15                      100.0 pts x    15% =  15.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#4  CL-MAL-0005-S  CostaLink, standard fare   TOTAL 58.31
+    Mon 12 Jul 08:15 -> 15:30 (7h 15m), 1 transfer(s), 22 seat(s) left, luggage 20 kg
+    Price       37.62 EUR                   61.6 pts x    40% =  24.66
+    Duration    7h 15m                      34.6 pts x    25% =   8.65
+    Departure   08:15                      100.0 pts x    15% =  15.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#5  CL-MAL-0007-F  CostaLink, flex fare   TOTAL 56.65
+    Tue 13 Jul 08:30 -> 15:00 (6h 30m), direct, 44 seat(s) left, luggage 30 kg
+    Price       47.74 EUR                   10.8 pts x    40% =   4.34
+    Duration    6h 30m                      69.2 pts x    25% =  17.31
+    Departure   08:30                      100.0 pts x    15% =  15.00
+    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+
+Showing 5 of 17 ranked offers. Use --top 0 to show all.
+
+Why #1 ranks first:
+  CL-MAL-0007-S (CostaLink, standard fare) ranks first with 65.82 points out of 100.
+  Compared with the runner-up VB-MAL-0005-S (65.40 points), it gains most on price (38.19 EUR against 43.38 EUR, +10.42 points).
+  The runner-up is better on flexibility (changeable + refundable against changeable, -10.00 points for the top offer).
+  Remaining disadvantage: flexibility (changeable scores 50.0 of 100).
+  This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

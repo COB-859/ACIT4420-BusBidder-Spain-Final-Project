@@ -1,0 +1,32 @@
+Data check
+  Companies:    5 accepted
+  Destinations: 15 accepted
+  Departures:   733 accepted (40 sold out, kept and hidden from searches)
+  Fares:        1558 accepted
+  Rejected rows: 26 (saved in output/rejected_records.txt)
+    companies_invalid.csv, line 2: rating is above 5: 7.2
+    companies_invalid.csv, line 3: duplicate company code: SR
+    companies_invalid.csv, line 4: company name is missing
+    departures_invalid.csv, line 2: unknown destination: 'XXX'
+    departures_invalid.csv, line 3: unknown company: 'ZZ'
+    departures_invalid.csv, line 4: departure is not a real date and time: '2027-07-32T08:00'
+    departures_invalid.csv, line 5: arrival 2027-07-12T08:00 is not after departure 2027-07-12T14:00
+    departures_invalid.csv, line 6: seats is below 0: -5
+    departures_invalid.csv, line 7: transfers is missing
+    departures_invalid.csv, line 8: departure ID must look like SR-MAL-0001: 'SR_MAL_1'
+    departures_invalid.csv, line 9: departure ID SR-MAL-9005 does not match company CE
+    departures_invalid.csv, line 10: duplicate departure ID: SR-MAL-0001
+    departures_invalid.csv, line 11: emissions is below 0: -3.5
+    departures_invalid.csv, line 12: journey is longer than 24 hours: 2940 minutes
+    departures_invalid.csv, line 13: transfers is not a whole number: 'two'
+    fares_invalid.csv, line 2: price must be above 0: -12.5
+    fares_invalid.csv, line 3: unknown departure: 'SR-MAL-9999'
+    fares_invalid.csv, line 4: offer ID must look like SR-MAL-0001-B: 'SRMAL0002B'
+    fares_invalid.csv, line 5: offer ID SR-MAL-0003-F does not match departure SR-MAL-0002
+    fares_invalid.csv, line 6: duplicate offer ID: SR-MAL-0001-B
+    fares_invalid.csv, line 7: changeable must be yes or no: 'maybe'
+    fares_invalid.csv, line 8: refund percent is outside 0 to 100: 150
+    fares_invalid.csv, line 9: offer ID CE-MAL-0002-B does not match fare type flex
+    fares_invalid.csv, line 10: price is missing
+    fares_invalid.csv, line 11: refundable is no but refund percent is 80
+    fares_invalid.csv, line 12: price is not a number: 'cheap'
