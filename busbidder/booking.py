@@ -16,7 +16,13 @@ from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
 
-from busbidder.exceptions import BookingError, BookingNotFoundError, DataFileError, NoSeatsError
+from busbidder.exceptions import (
+    BookingError,
+    BookingNotFoundError,
+    DataFileError,
+    InvalidRecordError,
+    NoSeatsError,
+)
 from busbidder.models import (
     PAYMENT_NOT_REFUNDED,
     PAYMENT_REFUNDED,
@@ -46,13 +52,45 @@ class BookingStore:
 
     def load(self) -> list[Booking]:
         """Return the saved bookings. No file yet means no bookings."""
-        if not self.path.is_file():
-            return []
         try:
-            data = json.loads(self.path.read_text(encoding="utf-8"))
-            return [Booking.from_dict(entry) for entry in data]
-        except (OSError, UnicodeDecodeError, ValueError, TypeError, KeyError) as error:
+            text = self.path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            return []
+        except (OSError, UnicodeDecodeError) as error:
             raise DataFileError(f"cannot read bookings file {self.path}: {error}") from error
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as error:
+            raise DataFileError(f"cannot read bookings file {self.path}: {error}") from error
+        if not isinstance(data, list):
+            raise DataFileError(f"bookings file {self.path} must hold a list of bookings")
+        bookings: list[Booking] = []
+        references: set[str] = set()
+        for number, entry in enumerate(data, start=1):
+            booking = self._booking_from(entry, number)
+            if booking.reference in references:
+                raise DataFileError(
+                    f"bookings file {self.path}: booking {number} repeats reference {booking.reference}"
+                )
+            references.add(booking.reference)
+            bookings.append(booking)
+        return bookings
+
+    def _booking_from(self, entry: object, number: int) -> Booking:
+        """Build one booking from a saved entry, or say which entry is wrong."""
+        try:
+            return Booking.from_dict(entry)
+        except InvalidRecordError as error:
+            raise DataFileError(
+                f"bookings file {self.path}: booking {number}: {error.reason}"
+            ) from error
+        except (TypeError, KeyError, ValueError, AttributeError) as error:
+            # A hand-edited entry can have a missing key or a value of the
+            # wrong type; all of these mean the entry is not a booking.
+            raise DataFileError(
+                f"bookings file {self.path}: booking {number} is not a valid booking record "
+                f"({type(error).__name__}: {error})"
+            ) from error
 
     def save(self, bookings: Iterable[Booking]) -> None:
         """Write all bookings. A crash cannot leave half a file behind."""
@@ -65,6 +103,12 @@ class BookingStore:
             # bookings file is always either the old version or the new one.
             os.replace(temporary, self.path)
         except OSError as error:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                # The temporary file could not be removed either; the error
+                # reported below is the one the user needs to see.
+                pass
             raise DataFileError(f"cannot write bookings file {self.path}: {error}") from error
 
 

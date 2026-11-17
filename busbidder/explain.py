@@ -39,13 +39,40 @@ def explain_top(ranked: Sequence[ScoredOffer]) -> list[str]:
         )
     else:
         lines.extend(_compare_with_runner_up(top, ranked[1]))
+        lines.append(_main_sources(top))
     lines.append(_weakest_point(top))
-    if any(score.estimated for score in top.scores.values()):
-        lines.append(
-            "Its emissions value is not reported, so its emissions points are an estimate "
-            "(the median of the offers that report a value)."
-        )
+    lines.extend(_estimates(top, ranked))
     lines.append(CLOSING)
+    return lines
+
+
+def _main_sources(top: ScoredOffer) -> str:
+    """Name the criteria that give the top offer most of its total."""
+    # Largest contribution first. sorted() keeps the registry order for equal ones.
+    largest = sorted(top.contributions, key=lambda name: -top.contributions[name])[:MAX_ADVANTAGES]
+    parts = [
+        f"{_label(name)} ({top.scores[name].value}, {top.contributions[name]:.2f} points)"
+        for name in largest
+    ]
+    return "Most of its total comes from " + " and ".join(parts) + "."
+
+
+def _estimates(top: ScoredOffer, ranked: Sequence[ScoredOffer]) -> list[str]:
+    """Say which points of the top offer stand in for a value that is not reported."""
+    lines = []
+    for name, score in top.scores.items():
+        if not score.estimated:
+            continue
+        if all(scored.scores[name].estimated for scored in ranked):
+            lines.append(
+                f"No ranked offer reports its {_label(name)}, so every offer gets "
+                f"the same neutral {score.points:.0f} points for it."
+            )
+        else:
+            lines.append(
+                f"Its {_label(name)} value is not reported, so its {_label(name)} points are "
+                "an estimate (the median of the offers that report a value)."
+            )
     return lines
 
 

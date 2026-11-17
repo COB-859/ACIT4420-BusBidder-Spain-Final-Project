@@ -43,7 +43,7 @@ The program asks for the destination, the travel dates, the number of passengers
 
 ### Commands
 
-Check the data files:
+Check the data files and the traveller profiles:
 
 ```bash
 python3 main.py validate
@@ -93,7 +93,7 @@ Use the reference printed by `book` in the `cancel` command.
 | `--save FILE` | Also write the result to a file. |
 | `--profile KEY` | `search` only. One of `budget`, `business`, `flexible`, `eco` (from `data/profiles.json`). |
 | `--weights TEXT` | `search` only, instead of `--profile`. For example `price=40,duration=25,time=15,flex=20`. |
-| `--top N` | `search` only. How many ranked offers to show, 0 for all. Default 10. |
+| `--top N` | `search` only. Show only the first N ranked offers. By default every ranked offer is shown. |
 | `--show-removed` | `search` only. List every removed offer with the reasons. |
 | `--profiles KEY ...` | `compare` only. The profiles to compare. Default: all. |
 
@@ -111,7 +111,7 @@ Use the reference printed by `book` in the `cancel` command.
 | Code | Meaning |
 |---|---|
 | 0 | The command ran. A search that finds no offer is also 0. |
-| 1 | An error was reported, for example a missing data file, an unknown destination, weights that do not total 100, or no seats left. |
+| 1 | An error was reported, for example a missing data file, an unknown destination, weights that do not total 100, or no seats left. An unexpected fault in the program also gives 1, with the details in the log file. |
 | 2 | The command line could not be understood (reported by `argparse`). |
 
 ## Running the tests
@@ -187,7 +187,9 @@ python3 tools/generate_data.py
 |---|---|
 | `output/rejected_records.txt` | The rows set aside in the last run. Rewritten on every run. |
 | `logs/busbidder.log` | Commands, load counts, rejected rows, sold-out departures, searches, bookings, cancellations and errors. |
-| `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. |
+| `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. The file is checked when it is read, so a hand-edited value that is not valid stops the command with an error. |
+
+The program is made for one user at a time. Two copies of the program that book at the same moment can overwrite each other's booking.
 
 ## Example output (in `output/`)
 
@@ -196,7 +198,7 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | File | Command |
 |---|---|
 | `validate.txt` | `python3 main.py validate > output/validate.txt` |
-| `search_spec_example.txt` | `python3 main.py search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable --weights price=40,duration=25,time=15,flex=20 --top 5 --save output/search_spec_example.txt` |
+| `search_spec_example.txt` | `python3 main.py search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable --weights price=40,duration=25,time=15,flex=20 --save output/search_spec_example.txt` |
 | `compare_malaga.txt` | `python3 main.py compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --save output/compare_malaga.txt` |
 | `compare_barcelona.txt` | `python3 main.py compare --destination Barcelona --date-from 2027-07-12 --date-to 2027-07-14 --depart afternoon --budget 70 --save output/compare_barcelona.txt` |
 | `compare_santiago.txt` | `python3 main.py compare --destination "Santiago de Compostela" --date-from 2027-07-10 --date-to 2027-07-16 --depart night --budget 60 --passengers 2 --save output/compare_santiago.txt` |

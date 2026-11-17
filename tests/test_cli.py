@@ -54,6 +54,30 @@ class StartTests(CliTestCase):
         self.assertIn("BusBidder Spain", output.getvalue())
 
 
+class FailureTests(CliTestCase):
+    def test_log_folder_that_cannot_be_used_gives_a_clean_error(self):
+        self.log_dir.write_text("a file where the folder should be", encoding="utf-8")
+        code, text = self.run_main("validate")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Error: cannot open the log file", text)
+
+    def test_output_folder_that_cannot_be_used_gives_a_clean_error(self):
+        self.output_dir.write_text("a file where the folder should be", encoding="utf-8")
+        code, text = self.run_main("validate")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Error: cannot write", text)
+
+    def test_unexpected_fault_is_logged_with_its_traceback(self):
+        with mock.patch.dict("busbidder.cli.COMMANDS", {"bookings": mock.Mock(side_effect=RuntimeError("boom"))}):
+            code, text = self.run_main("bookings")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Error: unexpected problem", text)
+        self.assertNotIn("Traceback", text)
+        log = self.read_log()
+        self.assertIn("ERROR busbidder: Unexpected error in bookings", log)
+        self.assertIn("RuntimeError: boom", log)
+
+
 class ValidateTests(CliTestCase):
     def test_reports_counts_for_valid_data(self):
         code, text = self.run_main("validate")
@@ -85,7 +109,24 @@ class ValidateTests(CliTestCase):
         code, text = self.run_main("validate")
         self.assertEqual(code, EXIT_ERROR)
         self.assertIn("Error: data file not found", text)
-        self.assertIn("ERROR busbidder: data file not found", self.read_log())
+        self.assertIn("ERROR busbidder: validate failed: DataFileError: data file not found",
+                      self.read_log())
+
+    def test_valid_profiles_are_counted(self):
+        code, text = self.run_main("validate")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Profiles:     2 valid, 0 invalid", text)
+
+    def test_profile_with_bad_weights_is_reported_and_fails_the_check(self):
+        (self.data_dir / "profiles.json").write_text(
+            '{"budget": {"description": "ok", "weights": {"price": 40, "duration": 25, "time": 15, "flex": 20}},'
+            ' "broken": {"description": "bad", "weights": {"price": 40, "duration": 25, "time": 15, "flex": 15}}}',
+            encoding="utf-8")
+        code, text = self.run_main("validate")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Profiles:     1 valid, 1 invalid", text)
+        self.assertIn("profile 'broken': weights must total 100", text)
+        self.assertIn("ERROR busbidder.cli: profiles.json: profile 'broken'", self.read_log())
 
     def test_folder_options_also_work_after_the_command(self):
         output = io.StringIO()
@@ -154,7 +195,8 @@ class SearchTests(CliTestCase):
             ([*MALAGA[:5], "2027-07-01", *MALAGA[6:], "--profile", "budget"], "is before first travel date"),
             ([*MALAGA[:7], "brunch", "--profile", "budget"], "preferred departure must be one of"),
             ([*MALAGA, "--profile", "budget", "--passengers", "0"], "passengers must be at least 1"),
-            ([*MALAGA, "--profile", "budget", "--budget", "-5"], "budget must be above 0"),
+            ([*MALAGA, "--profile", "budget", "--budget", "-5"], "budget must be a number above 0"),
+            ([*MALAGA, "--profile", "budget", "--budget", "nan"], "budget must be a number above 0"),
             ([*MALAGA, "--profile", "luxury"], "unknown profile"),
             ([*MALAGA, "--weights", "price=100"], "must use price, duration, time and flex"),
             ([*MALAGA, "--weights", "price=40,duration=25,time=15,flex=10"], "must total 100"),
@@ -164,6 +206,27 @@ class SearchTests(CliTestCase):
                 code, text = self.run_main("search", *arguments)
                 self.assertEqual(code, EXIT_ERROR)
                 self.assertIn(message, text)
+
+    def test_each_mandatory_option_reaches_the_filter(self):
+        cases = (
+            (["--max-transfers", "0"], "seats 1, transfers 2"),
+            (["--max-duration", "360"], "seats 1, duration 2"),
+            (["--refundable"], "seats 1, refundable 4"),
+            (["--min-luggage", "20"], "seats 1, luggage 1"),
+        )
+        for options, counts in cases:
+            with self.subTest(options=options):
+                code, text = self.run_main("search", *MALAGA, "--profile", "budget", *options)
+                self.assertEqual(code, EXIT_OK)
+                self.assertIn(f"removed per condition (an offer can fail several): {counts}", text)
+
+    def test_every_ranked_offer_is_shown_unless_top_is_given(self):
+        _code, everything = self.run_main("search", *MALAGA, "--profile", "budget")
+        self.assertIn("#4  ", everything)
+        self.assertNotIn("Showing", everything)
+        _code, limited = self.run_main("search", *MALAGA, "--profile", "budget", "--top", "1")
+        self.assertNotIn("#2  ", limited)
+        self.assertIn("Showing 1 of 4 ranked offers", limited)
 
     def test_save_writes_the_same_text_to_a_file(self):
         target = self.output_dir / "malaga.txt"
@@ -254,6 +317,40 @@ class BookTests(CliTestCase):
         self.assertIn("CE-MAL-0001-F", text)
         self.assertIn("confirmed", text)
 
+    def test_booking_and_cancelling_do_not_need_the_profiles_file(self):
+        (self.data_dir / "profiles.json").write_text("{broken", encoding="utf-8")
+        code, text = self.run_main("book", "--offer", "SR-MAL-0001-S")
+        self.assertEqual(code, EXIT_OK)
+        reference = next(line.split()[-1] for line in text.splitlines() if line.startswith("Reference:"))
+        self.assertEqual(self.run_main("cancel", "--ref", reference)[0], EXIT_OK)
+        self.assertEqual(self.run_main("bookings")[0], EXIT_OK)
+
+    def test_cancelling_a_booking_whose_departure_left_the_data(self):
+        _code, text = self.run_main("book", "--offer", "SR-TOL-0001-B")
+        reference = next(line.split()[-1] for line in text.splitlines() if line.startswith("Reference:"))
+        write_data_dir(
+            self.data_dir,
+            departures_csv=SMALL_DATA["departures.csv"].replace(
+                "SR-TOL-0001,SR,TOL,2027-07-12T10:00,2027-07-12T11:00,0,12,2.3\n", ""),
+            fares_csv=SMALL_DATA["fares.csv"].replace(
+                "SR-TOL-0001-B,SR-TOL-0001,basic,8.00,no,no,0,0,10\n", ""),
+        )
+        code, text = self.run_main("cancel", "--ref", reference)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Departure SR-TOL-0001 is no longer in the data files.", text)
+        self.assertNotIn("Seats left", text)
+
+    def test_hand_edited_bookings_file_gives_a_clean_error(self):
+        self.run_main("book", "--offer", "SR-MAL-0001-S")
+        path = self.state_dir / "bookings.json"
+        path.write_text(path.read_text(encoding="utf-8").replace('"passengers": 1', '"passengers": -30'),
+                        encoding="utf-8")
+        for command in (["bookings"], ["search", *MALAGA, "--profile", "budget"]):
+            with self.subTest(command=command[0]):
+                code, text = self.run_main(*command)
+                self.assertEqual(code, EXIT_ERROR)
+                self.assertIn("booking 1: passengers must be a whole number of at least 1", text)
+
     def test_booking_is_recorded_in_the_log(self):
         self.run_main("book", "--offer", "SR-MAL-0001-S")
         self.assertIn("INFO busbidder.booking: Booked BB-", self.read_log())
@@ -284,6 +381,34 @@ class GuidedTests(CliTestCase):
         self.assertIn("BOOKING CONFIRMED", text)
         self.assertIn("Offer:          SR-MAL-0001-S", text)
         self.assertRegex(text, BOOKING_REFERENCE_PATTERN.pattern.strip("^$"))
+
+    def test_guided_booking_is_made_for_the_number_of_passengers_asked(self):
+        answers = [*self.ANSWERS[:3], "2", *self.ANSWERS[4:], "1"]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Passengers:     2", text)
+        self.assertIn("Total price:    60.00 EUR", text)
+        _code, listing = self.run_main("bookings")
+        self.assertRegex(listing, r"SR-MAL-0001-S\s+Mon 12 Jul 08:00\s+2\s+60\.00 EUR")
+
+    def test_guided_answers_for_optional_conditions_reach_the_filter(self):
+        # transfers 0, duration 360 minutes, refundable yes, luggage 20 kg
+        answers = ["Malaga", "2027-07-12", "2027-07-14", "", "morning",
+                   "", "0", "360", "", "y", "20", "budget", ""]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        for condition in ("at most 0 transfer(s)", "journey at most 6h 00m",
+                          "ticket must be refundable", "luggage allowance at least 20 kg"):
+            self.assertIn(f"  - {condition}", text)
+        self.assertIn("#1  CE-MAL-0001-F", text)
+        self.assertNotIn("#2  ", text)
+
+    def test_budget_that_is_not_a_real_number_is_asked_again(self):
+        answers = [*self.ANSWERS[:5], "nan", *self.ANSWERS[5:], ""]
+        code, text = self.run_guided(answers)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("budget must be a number", text)
+        self.assertIn("price per person at most 50.00 EUR", text)
 
     def test_enter_at_the_end_books_nothing(self):
         code, text = self.run_guided([*self.ANSWERS, ""])

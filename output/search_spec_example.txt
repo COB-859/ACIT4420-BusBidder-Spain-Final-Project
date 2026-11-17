@@ -54,11 +54,94 @@ Ranked offers, best first (value, points, weight, contribution)
     Departure   08:30                      100.0 pts x    15% =  15.00
     Flexibility changeable + refundable    100.0 pts x    20% =  20.00
 
-Showing 5 of 17 ranked offers. Use --top 0 to show all.
+#6  VB-MAL-0004-S  VerdeBus, standard fare   TOTAL 56.21
+    Tue 13 Jul 12:00 -> 18:55 (6h 55m), direct, 23 seat(s) left, luggage 20 kg
+    Price       45.56 EUR                   21.8 pts x    40% =   8.71
+    Duration    6h 55m                      50.0 pts x    25% =  12.50
+    Departure   12:00                      100.0 pts x    15% =  15.00
+    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+
+#7  SR-MAL-0008-S  SolRuta, standard fare   TOTAL 55.62
+    Wed 14 Jul 15:45 -> 23:45 (8h 00m), 1 transfer(s), 46 seat(s) left, luggage 20 kg
+    Price       29.98 EUR                  100.0 pts x    40% =  40.00
+    Duration    8h 00m                       0.0 pts x    25% =   0.00
+    Departure   15:45                       37.5 pts x    15% =   5.62
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#8  CL-MAL-0006-S  CostaLink, standard fare   TOTAL 53.25
+    Mon 12 Jul 16:45 -> 23:20 (6h 35m), direct, 49 seat(s) left, luggage 20 kg
+    Price       38.06 EUR                   59.4 pts x    40% =  23.78
+    Duration    6h 35m                      65.4 pts x    25% =  16.35
+    Departure   16:45                       20.8 pts x    15% =   3.13
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#9  VB-MAL-0003-S  VerdeBus, standard fare   TOTAL 52.54
+    Mon 12 Jul 10:30 -> 17:35 (7h 05m), 1 transfer(s), 17 seat(s) left, luggage 20 kg
+    Price       46.43 EUR                   17.4 pts x    40% =   6.97
+    Duration    7h 05m                      42.3 pts x    25% =  10.58
+    Departure   10:30                      100.0 pts x    15% =  15.00
+    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+
+#10  CL-MAL-0010-S  CostaLink, standard fare   TOTAL 49.93
+    Wed 14 Jul 14:45 -> 21:20 (6h 35m), direct, 20 seat(s) left, luggage 20 kg
+    Price       42.20 EUR                   38.7 pts x    40% =  15.46
+    Duration    6h 35m                      65.4 pts x    25% =  16.35
+    Departure   14:45                       54.2 pts x    15% =   8.12
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#11  CE-MAL-0005-S  Camino Express, standard fare   TOTAL 49.49
+    Mon 12 Jul 09:15 -> 15:25 (6h 10m), direct, 3 seat(s) left, luggage 20 kg
+    Price       48.24 EUR                    8.3 pts x    40% =   3.33
+    Duration    6h 10m                      84.6 pts x    25% =  21.15
+    Departure   09:15                      100.0 pts x    15% =  15.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#12  CL-MAL-0005-F  CostaLink, flex fare   TOTAL 49.44
+    Mon 12 Jul 08:15 -> 15:30 (7h 15m), 1 transfer(s), 22 seat(s) left, luggage 30 kg
+    Price       47.02 EUR                   14.5 pts x    40% =   5.78
+    Duration    7h 15m                      34.6 pts x    25% =   8.65
+    Departure   08:15                      100.0 pts x    15% =  15.00
+    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+
+#13  NV-MAL-0005-S  NocheVia, standard fare   TOTAL 48.93
+    Wed 14 Jul 23:30 -> Thu 15 Jul 06:30 (7h 00m), direct, 35 seat(s) left, luggage 20 kg
+    Price       36.26 EUR                   68.5 pts x    40% =  27.39
+    Duration    7h 00m                      46.2 pts x    25% =  11.54
+    Departure   23:30                        0.0 pts x    15% =   0.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#14  NV-MAL-0004-S  NocheVia, standard fare   TOTAL 48.81
+    Tue 13 Jul 21:15 -> Wed 14 Jul 04:25 (7h 10m), direct, 50 seat(s) left, luggage 20 kg
+    Price       35.36 EUR                   73.0 pts x    40% =  29.20
+    Duration    7h 10m                      38.5 pts x    25% =   9.62
+    Departure   21:15                        0.0 pts x    15% =   0.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#15  CL-MAL-0008-S  CostaLink, standard fare   TOTAL 46.28
+    Tue 13 Jul 16:30 -> 23:05 (6h 35m), direct, 36 seat(s) left, luggage 20 kg
+    Price       41.84 EUR                   40.5 pts x    40% =  16.18
+    Duration    6h 35m                      65.4 pts x    25% =  16.35
+    Departure   16:30                       25.0 pts x    15% =   3.75
+    Flexibility changeable                  50.0 pts x    20% =  10.00
+
+#16  CL-MAL-0006-F  CostaLink, flex fare   TOTAL 44.15
+    Mon 12 Jul 16:45 -> 23:20 (6h 35m), direct, 49 seat(s) left, luggage 30 kg
+    Price       47.57 EUR                   11.7 pts x    40% =   4.68
+    Duration    6h 35m                      65.4 pts x    25% =  16.35
+    Departure   16:45                       20.8 pts x    15% =   3.13
+    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+
+#17  CE-MAL-0009-S  Camino Express, standard fare   TOTAL 41.88
+    Wed 14 Jul 15:15 -> 21:05 (5h 50m), direct, 26 seat(s) left, luggage 20 kg
+    Price       49.90 EUR                    0.0 pts x    40% =   0.00
+    Duration    5h 50m                     100.0 pts x    25% =  25.00
+    Departure   15:15                       45.8 pts x    15% =   6.88
+    Flexibility changeable                  50.0 pts x    20% =  10.00
 
 Why #1 ranks first:
   CL-MAL-0007-S (CostaLink, standard fare) ranks first with 65.82 points out of 100.
   Compared with the runner-up VB-MAL-0005-S (65.40 points), it gains most on price (38.19 EUR against 43.38 EUR, +10.42 points).
   The runner-up is better on flexibility (changeable + refundable against changeable, -10.00 points for the top offer).
+  Most of its total comes from price (38.19 EUR, 23.51 points) and duration (6h 30m, 17.31 points).
   Remaining disadvantage: flexibility (changeable scores 50.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

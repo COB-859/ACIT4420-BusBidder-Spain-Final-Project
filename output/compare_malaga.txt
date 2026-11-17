@@ -39,6 +39,7 @@ Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
   CL-MAL-0007-B (CostaLink, basic fare) ranks first with 70.41 points out of 100.
   Compared with the runner-up SR-MAL-0007-B (70.27 points), it gains most on duration (6h 30m against 8h 05m, +9.19 points) and transfers (direct against 1 transfer(s), +5.00 points).
   The runner-up is better on price (24.60 EUR against 31.83 EUR, -15.72 points for the top offer).
+  Most of its total comes from price (31.83 EUR, 39.28 points) and duration (6h 30m, 11.13 points).
   Remaining disadvantage: flexibility (fixed scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -57,6 +58,7 @@ Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
 
   VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 83.54 points out of 100.
   Compared with the runner-up CL-MAL-0007-F (81.82 points), it gains most on price (43.38 EUR against 47.74 EUR, +1.72 points).
+  Most of its total comes from departure (10:15, 30.00 points) and duration (6h 30m, 25.97 points).
   Remaining disadvantage: price (43.38 EUR scores 25.8 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -74,6 +76,7 @@ Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
 
   VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 81.28 points out of 100.
   Compared with the runner-up CL-MAL-0007-F (77.84 points), it gains most on price (43.38 EUR against 47.74 EUR, +3.45 points).
+  Most of its total comes from flexibility (changeable + refundable, 50.00 points) and departure (10:15, 15.00 points).
   Remaining disadvantage: price (43.38 EUR scores 25.8 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -92,5 +95,6 @@ Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
 
   VB-MAL-0005-S (VerdeBus, standard fare) ranks first with 81.28 points out of 100.
   Compared with the runner-up VB-MAL-0004-S (75.73 points), it gains most on duration (6h 30m against 6h 55m, +2.42 points) and price (43.38 EUR against 45.56 EUR, +1.72 points).
+  Most of its total comes from emissions (8.6 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
   Remaining disadvantage: price (43.38 EUR scores 25.8 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

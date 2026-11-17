@@ -1,5 +1,6 @@
 """Tests for the saved bookings and the seat ledger."""
 
+import json
 import tempfile
 import unittest
 from datetime import datetime
@@ -55,10 +56,62 @@ class BookingStoreTests(unittest.TestCase):
 
     def test_broken_file_is_a_data_file_error(self):
         self.path.parent.mkdir(parents=True)
-        for text in ("{not json", '[{"reference": "BB-1"}]', '{"a": 1}'):
+        for text in ("{not json", '[{"reference": "BB-1"}]', '{"a": 1}', "{}", "[1]", "[{}]"):
             self.path.write_text(text, encoding="utf-8")
             with self.subTest(text=text), self.assertRaises(DataFileError):
                 self.store.load()
+
+    def save_edited(self, **changes):
+        """Save one valid booking with some values replaced, as a person editing the file might."""
+        entry = make_booking().to_dict()
+        fare_changes = changes.pop("fare", {})
+        entry.update(changes)
+        entry["fare"].update(fare_changes)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps([entry]), encoding="utf-8")
+
+    def test_hand_edited_values_are_rejected_with_the_booking_number(self):
+        cases = (
+            ({"passengers": "2"}, "passengers must be a whole number of at least 1"),
+            ({"passengers": None}, "passengers must be a whole number of at least 1"),
+            ({"passengers": -30}, "passengers must be a whole number of at least 1"),
+            ({"passengers": True}, "passengers must be a whole number of at least 1"),
+            ({"status": "Confirmed"}, "unknown booking status"),
+            ({"status": "pending"}, "unknown booking status"),
+            ({"total_price": "35.0"}, "total price must be a number"),
+            ({"refund_amount": -1}, "refund must be a number"),
+            ({"reference": None}, "booking reference has the wrong form"),
+            ({"reference": "not-a-reference"}, "booking reference has the wrong form"),
+            ({"fare": {"price": -5}}, "price must be above 0"),
+            ({"fare": {"offer_id": 5}}, "is not a valid booking record"),
+            ({"departure": "yesterday"}, "is not a valid booking record"),
+        )
+        for changes, message in cases:
+            with self.subTest(changes=changes):
+                self.save_edited(**changes)
+                with self.assertRaises(DataFileError) as caught:
+                    self.store.load()
+                self.assertIn("booking 1", str(caught.exception))
+                self.assertIn(message, str(caught.exception))
+
+    def test_same_reference_twice_is_rejected(self):
+        entry = make_booking().to_dict()
+        self.path.parent.mkdir(parents=True)
+        self.path.write_text(json.dumps([entry, entry]), encoding="utf-8")
+        with self.assertRaises(DataFileError) as caught:
+            self.store.load()
+        self.assertIn("booking 2 repeats reference BB-20261120-AAAAAA", str(caught.exception))
+
+    def test_directory_in_place_of_the_file_is_an_error_not_an_empty_list(self):
+        self.path.mkdir(parents=True)
+        with self.assertRaises(DataFileError):
+            self.store.load()
+
+    def test_failed_save_leaves_no_temporary_file(self):
+        self.path.mkdir(parents=True)   # a folder where the file should be: replacing it fails
+        with self.assertRaises(DataFileError):
+            self.store.save([make_booking()])
+        self.assertEqual([p.name for p in self.path.parent.iterdir()], ["bookings.json"])
 
 
 class SeatLedgerTests(unittest.TestCase):
@@ -177,6 +230,13 @@ class BookingServiceTests(ServiceTestCase):
         with self.assertRaises(NoSeatsError):
             second_service.book("SR-MAL-0001-F", 2)
 
+    def test_a_second_booking_does_not_replace_the_first(self):
+        first = self.service.book("SR-MAL-0001-B", 1)
+        second = self.service.book("SR-MAL-0001-F", 1)
+        self.assertEqual([saved.reference for saved in self.store.load()],
+                         [first.reference, second.reference])
+        self.assertEqual(self.service.seats_left("SR-MAL-0001"), 1)
+
     def test_same_code_twice_gives_a_new_reference(self):
         first = self.service.book("SR-MAL-0001-B", 1)
         second = self.service.book("SR-MAL-0001-B", 1)
@@ -231,6 +291,12 @@ class CancelTests(ServiceTestCase):
         cancelled = self.service.cancel(booking.reference)
         self.assertEqual(cancelled.refund_amount, 72.8)
         self.assertEqual(cancelled.payment_status, "refunded (simulated)")
+
+    def test_refund_is_rounded_to_whole_cents(self):
+        self.fares["SR-MAL-0001-F"] = make_fare("SR-MAL-0001", "F", price=33.33,
+                                                changeable=True, refundable=True)
+        booking = self.make_service().book("SR-MAL-0001-F", 1)   # 80% of 33.33 is 26.664
+        self.assertEqual(self.service.cancel(booking.reference).refund_amount, 26.66)
 
     def test_non_refundable_fare_gets_no_refund(self):
         booking = self.service.book("SR-MAL-0001-B", 1)

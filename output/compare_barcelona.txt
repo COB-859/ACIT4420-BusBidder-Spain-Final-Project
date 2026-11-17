@@ -38,6 +38,7 @@ Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
   CL-BAR-0009-B (CostaLink, basic fare) ranks first with 73.26 points out of 100.
   Compared with the runner-up SR-BAR-0005-B (70.45 points), it gains most on duration (7h 35m against 9h 05m, +9.31 points) and transfers (direct against 1 transfer(s), +5.00 points).
   The runner-up is better on price (27.34 EUR against 35.97 EUR, -11.50 points for the top offer).
+  Most of its total comes from price (35.97 EUR, 43.43 points) and departure (16:15, 10.00 points).
   Remaining disadvantage: flexibility (fixed scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -57,6 +58,7 @@ Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
   CE-BAR-0006-F (Camino Express, flex fare) ranks first with 83.97 points out of 100.
   Compared with the runner-up CL-BAR-0009-F (81.47 points), it gains most on duration (7h 10m against 7h 35m, +6.03 points).
   The runner-up is better on price (53.96 EUR against 68.56 EUR, -3.54 points for the top offer).
+  Most of its total comes from departure (18:00, 30.00 points) and duration (7h 10m, 28.97 points).
   Remaining disadvantage: price (68.56 EUR scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -75,6 +77,7 @@ Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
   CL-BAR-0009-F (CostaLink, flex fare) ranks first with 81.90 points out of 100.
   Compared with the runner-up VB-BAR-0005-S (80.34 points), it gains most on duration (7h 35m against 7h 55m, +2.07 points).
   The runner-up is better on price (52.92 EUR against 53.96 EUR, -0.50 points for the top offer).
+  Most of its total comes from flexibility (changeable + refundable, 50.00 points) and departure (16:15, 15.00 points).
   Remaining disadvantage: price (53.96 EUR scores 35.4 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -94,5 +97,6 @@ Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
   VB-BAR-0004-S (VerdeBus, standard fare) ranks first with 79.52 points out of 100.
   Compared with the runner-up VB-BAR-0005-S (78.46 points), it gains most on emissions (10.6 kg against 11.0 kg, +1.88 points).
   The runner-up is better on duration (7h 55m against 8h 00m, -0.52 points for the top offer).
+  Most of its total comes from emissions (10.6 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
   Remaining disadvantage: price (53.54 EUR scores 36.4 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

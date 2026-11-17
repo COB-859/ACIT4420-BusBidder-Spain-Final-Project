@@ -1,8 +1,11 @@
 """Hard constraints: the mandatory conditions an offer must meet.
 
-Each constraint is a small function that registers itself with the
-@constraint decorator. The filter walks through the registry, so adding a
-constraint means adding one function and changing nothing else.
+Each constraint is a small function that registers itself, together with
+the text that describes it to the traveller, through the @constraint
+decorator. The filter and the list of mandatory conditions both walk
+through the registry, so neither changes when a constraint is added. A
+constraint that needs a new value from the traveller also needs a field
+in TravelRequest and a command-line option.
 """
 
 from __future__ import annotations
@@ -12,27 +15,44 @@ from dataclasses import dataclass, field
 
 from busbidder.models import Offer, TravelRequest, format_duration
 
-# A constraint gets the offer, the request and the seats left on the
-# offer's departure. It returns None when the offer passes, or the reason
-# it fails.
-ConstraintFunction = Callable[[Offer, TravelRequest, int], "str | None"]
+# The check gets the offer, the request and the seats left on the offer's
+# departure. It returns None when the offer passes, or the reason it fails.
+CheckFunction = Callable[[Offer, TravelRequest, int], "str | None"]
+# The description says what the traveller asked for, or None when the
+# traveller did not set this condition.
+DescribeFunction = Callable[[TravelRequest], "str | None"]
 
-CONSTRAINTS: dict[str, ConstraintFunction] = {}
+
+@dataclass(frozen=True)
+class Constraint:
+    """A registered hard constraint: its name, its check and its description."""
+
+    name: str
+    check: CheckFunction
+    describe: DescribeFunction
 
 
-def constraint(name: str) -> Callable[[ConstraintFunction], ConstraintFunction]:
-    """Register the decorated function as the hard constraint called name."""
+CONSTRAINTS: dict[str, Constraint] = {}
 
-    def register(function: ConstraintFunction) -> ConstraintFunction:
+
+def constraint(name: str, describe: DescribeFunction) -> Callable[[CheckFunction], CheckFunction]:
+    """Register the decorated function as the hard constraint called name.
+
+    describe turns a request into the text shown to the traveller, so a
+    constraint that filters offers is always also listed as a mandatory
+    condition.
+    """
+
+    def register(function: CheckFunction) -> CheckFunction:
         if name in CONSTRAINTS:
             raise ValueError(f"constraint {name!r} is registered twice")
-        CONSTRAINTS[name] = function
+        CONSTRAINTS[name] = Constraint(name, function, describe)
         return function
 
     return register
 
 
-@constraint("seats")
+@constraint("seats", describe=lambda request: f"at least {request.passengers} seat(s) left")
 def enough_seats(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The departure must have a seat for every passenger."""
     if seats_left >= request.passengers:
@@ -42,7 +62,11 @@ def enough_seats(offer: Offer, request: TravelRequest, seats_left: int) -> str |
     return f"{seats_left} seat(s) left, {request.passengers} needed"
 
 
-@constraint("budget")
+@constraint(
+    "budget",
+    describe=lambda request: None if request.budget is None
+    else f"price per person at most {request.budget:.2f} EUR",
+)
 def within_budget(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The price per person must not be above the budget."""
     if request.budget is None or offer.price <= request.budget:
@@ -50,7 +74,11 @@ def within_budget(offer: Offer, request: TravelRequest, seats_left: int) -> str 
     return f"price {offer.price:.2f} EUR is above the budget of {request.budget:.2f} EUR"
 
 
-@constraint("transfers")
+@constraint(
+    "transfers",
+    describe=lambda request: None if request.max_transfers is None
+    else f"at most {request.max_transfers} transfer(s)",
+)
 def few_enough_transfers(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The journey must not have more transfers than allowed."""
     if request.max_transfers is None or offer.departure.transfers <= request.max_transfers:
@@ -58,7 +86,11 @@ def few_enough_transfers(offer: Offer, request: TravelRequest, seats_left: int) 
     return f"{offer.departure.transfers} transfer(s), at most {request.max_transfers} allowed"
 
 
-@constraint("duration")
+@constraint(
+    "duration",
+    describe=lambda request: None if request.max_duration_minutes is None
+    else f"journey at most {format_duration(request.max_duration_minutes)}",
+)
 def short_enough(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The journey must not be longer than the limit."""
     limit = request.max_duration_minutes
@@ -70,7 +102,10 @@ def short_enough(offer: Offer, request: TravelRequest, seats_left: int) -> str |
     )
 
 
-@constraint("changeable")
+@constraint(
+    "changeable",
+    describe=lambda request: "ticket must be changeable" if request.require_changeable else None,
+)
 def changeable_if_required(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The ticket must be changeable when the traveller requires it."""
     if not request.require_changeable or offer.fare.changeable:
@@ -78,7 +113,10 @@ def changeable_if_required(offer: Offer, request: TravelRequest, seats_left: int
     return "ticket cannot be changed"
 
 
-@constraint("refundable")
+@constraint(
+    "refundable",
+    describe=lambda request: "ticket must be refundable" if request.require_refundable else None,
+)
 def refundable_if_required(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The ticket must be refundable when the traveller requires it."""
     if not request.require_refundable or offer.fare.refundable:
@@ -86,7 +124,11 @@ def refundable_if_required(offer: Offer, request: TravelRequest, seats_left: int
     return "ticket cannot be refunded"
 
 
-@constraint("luggage")
+@constraint(
+    "luggage",
+    describe=lambda request: None if request.min_luggage_kg is None
+    else f"luggage allowance at least {request.min_luggage_kg} kg",
+)
 def enough_luggage(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The luggage allowance must cover what the traveller needs."""
     if request.min_luggage_kg is None or offer.fare.luggage_kg >= request.min_luggage_kg:
@@ -96,20 +138,8 @@ def enough_luggage(offer: Offer, request: TravelRequest, seats_left: int) -> str
 
 def describe_constraints(request: TravelRequest) -> list[str]:
     """Return the mandatory conditions of a request as text for the user."""
-    lines = [f"at least {request.passengers} seat(s) left"]
-    if request.budget is not None:
-        lines.append(f"price per person at most {request.budget:.2f} EUR")
-    if request.max_transfers is not None:
-        lines.append(f"at most {request.max_transfers} transfer(s)")
-    if request.max_duration_minutes is not None:
-        lines.append(f"journey at most {format_duration(request.max_duration_minutes)}")
-    if request.require_changeable:
-        lines.append("ticket must be changeable")
-    if request.require_refundable:
-        lines.append("ticket must be refundable")
-    if request.min_luggage_kg is not None:
-        lines.append(f"luggage allowance at least {request.min_luggage_kg} kg")
-    return lines
+    descriptions = (rule.describe(request) for rule in CONSTRAINTS.values())
+    return [text for text in descriptions if text is not None]
 
 
 def in_scope(offer: Offer, request: TravelRequest) -> bool:
@@ -167,8 +197,8 @@ def filter_offers(
         result.in_scope += 1
         left = seats_left.get(offer.departure.departure_id, 0)
         reasons = {}
-        for name, check in CONSTRAINTS.items():
-            reason = check(offer, request, left)
+        for name, rule in CONSTRAINTS.items():
+            reason = rule.check(offer, request, left)
             if reason is not None:
                 reasons[name] = reason
                 result.counts[name] += 1

@@ -206,6 +206,8 @@ class TravelRequestTests(unittest.TestCase):
 
     def test_bad_requests_are_rejected(self):
         bad_options = (
+            {"budget": float("nan")},
+            {"budget": float("inf")},
             {"date_from": date(2027, 7, 14), "date_to": date(2027, 7, 12)},
             {"passengers": 0},
             {"budget": 0},
@@ -239,6 +241,13 @@ class BookingTests(unittest.TestCase):
         self.assertEqual(booking.offer_id, "SR-MAL-0001-F")
         self.assertEqual(booking.departure_id, "SR-MAL-0001")
         self.assertTrue(booking.is_active)
+
+    def test_booking_checks_its_own_values(self):
+        good = self.make_booking().to_dict()
+        for name, value in (("passengers", 0), ("passengers", 1.5), ("status", "maybe"),
+                            ("total_price", -1.0), ("reference", "BB-1")):
+            with self.subTest(name=name, value=value), self.assertRaises(InvalidRecordError):
+                Booking.from_dict({**good, name: value})
 
     def test_cancelled_booking_is_not_active(self):
         booking = self.make_booking()

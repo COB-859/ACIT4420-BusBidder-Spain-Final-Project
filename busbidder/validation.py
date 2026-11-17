@@ -23,6 +23,10 @@ BOOKING_REFERENCE_PATTERN = re.compile(r"^BB-(?P<date>\d{8})-(?P<code>[A-HJ-NP-Z
 CLOCK_TIME_PATTERN = re.compile(r"^(?P<hour>[01]?\d|2[0-3]):(?P<minute>[0-5]\d)$")
 DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# int() and float() also accept forms such as 3_0, 1e5, nan and digits from
+# other scripts. A data file should hold plain numbers only.
+INTEGER_PATTERN = re.compile(r"^[+-]?\d+$", re.ASCII)
+DECIMAL_PATTERN = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)$", re.ASCII)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M"
 DATE_FORMAT = "%Y-%m-%d"
@@ -44,10 +48,9 @@ def require_text(value: str | None, field: str) -> str:
 def parse_int(value: str | None, field: str, minimum: int | None = None) -> int:
     """Return the value as a whole number, checked against a minimum."""
     text = require_text(value, field)
-    try:
-        number = int(text)
-    except ValueError:
-        raise InvalidRecordError(f"{field} is not a whole number: {text!r}") from None
+    if not INTEGER_PATTERN.match(text):
+        raise InvalidRecordError(f"{field} is not a whole number: {text!r}")
+    number = int(text)
     if minimum is not None and number < minimum:
         raise InvalidRecordError(f"{field} is below {minimum}: {number}")
     return number
@@ -61,10 +64,10 @@ def parse_float(
 ) -> float:
     """Return the value as a number, checked against a minimum and a maximum."""
     text = require_text(value, field)
-    try:
-        number = float(text)
-    except ValueError:
-        raise InvalidRecordError(f"{field} is not a number: {text!r}") from None
+    if not DECIMAL_PATTERN.match(text):
+        raise InvalidRecordError(f"{field} is not a number: {text!r}")
+    number = float(text)
+    # A very long run of digits still overflows to infinity.
     if not math.isfinite(number):
         raise InvalidRecordError(f"{field} is not a usable number: {text!r}")
     if minimum is not None and number < minimum:

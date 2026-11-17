@@ -6,6 +6,7 @@ from pathlib import Path
 
 from busbidder.exceptions import DataFileError
 from busbidder.loader import load_all, load_profiles, read_rows, write_rejected
+from busbidder.ranking import check_weights
 from tests.helpers import SMALL_DATA, write_data_dir
 
 PROJECT_DATA = Path(__file__).resolve().parent.parent / "data"
@@ -91,16 +92,66 @@ class LoadAllTests(TempDirTestCase):
         with self.assertRaises(DataFileError):
             load_all(write_data_dir(self.folder, companies_csv=""))
 
-    def test_file_with_header_only_loads_nothing(self):
+    def test_main_file_with_header_only_is_a_data_file_error(self):
         header = SMALL_DATA["fares.csv"].splitlines()[0] + "\n"
-        result = load_all(write_data_dir(self.folder, fares_csv=header))
-        self.assertEqual(result.fares, {})
-        self.assertEqual(result.offers(), [])
+        with self.assertRaises(DataFileError) as caught:
+            load_all(write_data_dir(self.folder, fares_csv=header))
+        self.assertIn("fares.csv holds no valid rows", str(caught.exception))
+
+    def test_emptied_main_file_is_not_replaced_by_the_invalid_examples(self):
+        write_data_dir(self.folder, companies_csv="company_code,name,rating\n")
+        (self.folder / "companies_invalid.csv").write_text(
+            "company_code,name,rating\nSR,SolRuta Copy,3.0\n", encoding="utf-8")
+        with self.assertRaises(DataFileError) as caught:
+            load_all(self.folder)
+        self.assertIn("companies.csv holds no valid rows", str(caught.exception))
+
+    def test_directory_in_place_of_a_file_is_a_data_file_error(self):
+        write_data_dir(self.folder)
+        (self.folder / "fares.csv").unlink()
+        (self.folder / "fares.csv").mkdir()
+        with self.assertRaises(DataFileError) as caught:
+            load_all(self.folder)
+        self.assertIn("cannot read", str(caught.exception))
 
     def test_short_row_is_rejected_as_missing_value(self):
         fares = SMALL_DATA["fares.csv"] + "SR-TOL-0001-S,SR-TOL-0001,standard\n"
         result = load_all(write_data_dir(self.folder, fares_csv=fares))
-        self.assertEqual(result.rejected[0].reason, "price is missing")
+        self.assertEqual(
+            result.rejected[0].reason,
+            "row has too few values: nothing for price_eur, changeable, refundable, "
+            "change_fee_eur, refund_percent, luggage_kg",
+        )
+
+    def test_row_with_too_many_values_is_rejected(self):
+        # A decimal comma splits 19,2 into two cells.
+        departures = SMALL_DATA["departures.csv"] + (
+            "SR-MAL-0002,SR,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,19,2\n")
+        result = load_all(write_data_dir(self.folder, departures_csv=departures))
+        self.assertNotIn("SR-MAL-0002", result.departures)
+        self.assertEqual(result.rejected[0].reason, "row has 1 value(s) too many")
+
+    def test_numbers_written_in_unusual_ways_are_rejected(self):
+        for seats in ("3_7", "1e1", "\u0663"):
+            with self.subTest(seats=seats):
+                departures = SMALL_DATA["departures.csv"].replace(
+                    "2027-07-12T15:00,1,3,15.9", f"2027-07-12T15:00,1,{seats},15.9")
+                folder = self.folder / f"case_{len(seats)}_{ord(seats[0])}"
+                result = load_all(write_data_dir(folder, departures_csv=departures))
+                self.assertIn("seats is not a whole number", result.rejected[0].reason)
+
+    def test_unknown_company_and_destination_are_rejected(self):
+        departures = SMALL_DATA["departures.csv"] + (
+            "ZZ-MAL-0001,ZZ,MAL,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0\n"
+            "SR-XXX-0001,SR,XXX,2027-07-12T08:00,2027-07-12T14:00,0,30,15.0\n")
+        result = load_all(write_data_dir(self.folder, departures_csv=departures))
+        self.assertEqual([record.reason for record in result.rejected],
+                         ["unknown company: 'ZZ'", "unknown destination: 'XXX'"])
+
+    def test_missing_optional_file_is_noted_in_the_log(self):
+        with self.assertLogs("busbidder.loader", level="INFO") as logs:
+            load_all(write_data_dir(self.folder))
+        self.assertTrue(any("Optional file fares_invalid.csv not found" in line for line in logs.output))
 
     def test_invalid_file_is_read_after_the_main_file(self):
         write_data_dir(self.folder)
@@ -216,6 +267,12 @@ class ProfileTests(TempDirTestCase):
         profiles = load_profiles(PROJECT_DATA / "profiles.json")
         for key in ("budget", "business", "flexible", "eco"):
             self.assertIn(key, profiles)
+
+    def test_every_project_profile_has_usable_weights(self):
+        for key, profile in load_profiles(PROJECT_DATA / "profiles.json").items():
+            with self.subTest(profile=key):
+                weights = check_weights(profile.weights)
+                self.assertAlmostEqual(sum(weights.values()), 100)
 
     def test_missing_or_broken_profiles_file_is_a_data_file_error(self):
         with self.assertRaises(DataFileError):

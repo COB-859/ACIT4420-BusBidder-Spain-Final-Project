@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,7 +22,13 @@ from busbidder.display import (
     format_removed,
     format_request,
 )
-from busbidder.exceptions import BusBidderError, DataFileError, InvalidRecordError, InvalidRequestError
+from busbidder.exceptions import (
+    BusBidderError,
+    DataFileError,
+    InvalidRecordError,
+    InvalidRequestError,
+    WeightError,
+)
 from busbidder.loader import (
     PROFILES_FILE,
     REJECTED_FILE,
@@ -30,7 +37,7 @@ from busbidder.loader import (
     load_profiles,
     write_rejected,
 )
-from busbidder.logsetup import close_logging, configure_logging
+from busbidder.logsetup import LOG_FILE_NAME, close_logging, configure_logging
 from busbidder.models import Destination, TimeBand, TravellerProfile, TravelRequest
 from busbidder.ranking import ScoredOffer, check_weights, parse_weights, rank_offers
 from busbidder.validation import parse_date
@@ -43,7 +50,7 @@ DEFAULT_DATA_DIR = Path("data")
 DEFAULT_STATE_DIR = Path("state")
 DEFAULT_LOG_DIR = Path("logs")
 DEFAULT_OUTPUT_DIR = Path("output")
-DEFAULT_TOP = 10
+SHOW_ALL = 0
 CUSTOM_WEIGHTS = "custom"
 
 # The guided mode reads answers through a function like input(), so tests
@@ -61,11 +68,13 @@ class Session:
     ledger: SeatLedger
 
 
-def open_session(args: argparse.Namespace) -> Session:
-    """Read the data files, the profiles and the saved bookings."""
+def open_session(args: argparse.Namespace, need_profiles: bool = True) -> Session:
+    """Read the data files and the saved bookings, and the profiles when needed."""
     data = load_all(args.data)
     write_rejected(data.rejected, args.output / REJECTED_FILE)
-    profiles = load_profiles(args.data / PROFILES_FILE)
+    # Booking commands do not use profiles, so a broken profiles file must
+    # not stop a traveller from cancelling a booking.
+    profiles = load_profiles(args.data / PROFILES_FILE) if need_profiles else {}
     store = BookingStore(args.state / BOOKINGS_FILE)
     ledger = SeatLedger(data.departures, store.load())
     return Session(data, profiles, store, ledger)
@@ -160,7 +169,18 @@ def run_validate(args: argparse.Namespace) -> int:
     print(f"  Rejected rows: {len(data.rejected)} (saved in {args.output / REJECTED_FILE})")
     for record in data.rejected:
         print(f"    {record.describe()}")
-    return EXIT_OK
+    profiles = load_profiles(args.data / PROFILES_FILE)
+    problems = []
+    for profile in profiles.values():
+        try:
+            check_weights(profile.weights)
+        except WeightError as error:
+            problems.append(f"profile '{profile.key}': {error}")
+    print(f"  Profiles:     {len(profiles) - len(problems)} valid, {len(problems)} invalid")
+    for problem in problems:
+        logger.error("%s: %s", PROFILES_FILE, problem)
+        print(f"    {problem}")
+    return EXIT_ERROR if problems else EXIT_OK
 
 
 def weights_from_profile(key: str, session: Session) -> tuple[dict[str, float], str]:
@@ -179,7 +199,7 @@ def search_report(
     request: TravelRequest,
     weights: Mapping[str, float],
     source: str,
-    top: int = DEFAULT_TOP,
+    top: int = SHOW_ALL,
     show_removed: bool = False,
 ) -> tuple[list[str], list[ScoredOffer]]:
     """Filter and rank the offers; return the text to show and the ranking."""
@@ -231,7 +251,6 @@ def run_compare(args: argparse.Namespace) -> int:
     lines += format_filter(result)
     if result.accepted:
         lines += format_comparison(results, seats_left)
-    emit(lines, args.save)
     logger.info(
         "Compare: %s, %s to %s, profiles %s: %d ranked, top offers %s",
         request.destination.name, request.date_from, request.date_to, ", ".join(keys),
@@ -239,6 +258,7 @@ def run_compare(args: argparse.Namespace) -> int:
         ", ".join(f"{key}={ranked[0].offer.offer_id}" for key, (_d, _w, ranked) in results.items() if ranked)
         or "none",
     )
+    emit(lines, args.save)
     return EXIT_OK
 
 
@@ -247,35 +267,34 @@ def make_service(session: Session) -> BookingService:
     return BookingService(session.store, session.data.departures, session.data.fares)
 
 
+def seats_line(session: Session, service: BookingService, departure_id: str) -> str:
+    """Return the line that says how many seats a departure has left."""
+    if departure_id not in session.data.departures:
+        return f"Departure {departure_id} is no longer in the data files."
+    return f"Seats left on departure {departure_id}: {service.seats_left(departure_id)}"
+
+
 def run_book(args: argparse.Namespace) -> int:
     """Book one offer and print the confirmation."""
-    session = open_session(args)
+    session = open_session(args, need_profiles=False)
     service = make_service(session)
     booking = service.book(args.offer, args.passengers)
-    lines = format_confirmation(booking)
-    lines.append(
-        f"Seats left on departure {booking.departure_id}: {service.seats_left(booking.departure_id)}"
-    )
-    emit(lines)
+    emit([*format_confirmation(booking), seats_line(session, service, booking.departure_id)])
     return EXIT_OK
 
 
 def run_cancel(args: argparse.Namespace) -> int:
     """Cancel one booking and print what happened to it."""
-    session = open_session(args)
+    session = open_session(args, need_profiles=False)
     service = make_service(session)
     booking = service.cancel(args.ref)
-    lines = format_confirmation(booking)
-    lines.append(
-        f"Seats left on departure {booking.departure_id}: {service.seats_left(booking.departure_id)}"
-    )
-    emit(lines)
+    emit([*format_confirmation(booking), seats_line(session, service, booking.departure_id)])
     return EXIT_OK
 
 
 def run_bookings(args: argparse.Namespace) -> int:
     """List the saved bookings."""
-    emit(format_bookings(make_service(open_session(args)).bookings()))
+    emit(format_bookings(make_service(open_session(args, need_profiles=False)).bookings()))
     return EXIT_OK
 
 
@@ -286,6 +305,7 @@ def ask(read: Reader, prompt: str, convert: Callable[[str], object]):
         try:
             return convert(answer)
         except (BusBidderError, ValueError) as error:
+            logger.info("Guided mode: answer to %r was not usable: %s", prompt.strip(), error)
             print(f"  {error}. Please answer again.")
 
 
@@ -300,6 +320,8 @@ def to_number(text: str, kind: type, minimum: float, what: str):
         number = kind(text)
     except ValueError:
         raise ValueError(f"{what} must be a number") from None
+    if not math.isfinite(number):
+        raise ValueError(f"{what} must be a number")
     if number < minimum:
         raise ValueError(f"{what} must be at least {minimum}")
     return number
@@ -387,7 +409,7 @@ def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
         emit(lines)
         if not ranked:
             return EXIT_OK
-        shown = min(len(ranked), DEFAULT_TOP)
+        shown = len(ranked)
 
         def rank_from(text: str) -> int:
             rank = to_number(text, int, 1, "rank number")
@@ -403,6 +425,7 @@ def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
         emit(format_confirmation(booking))
         return EXIT_OK
     except (EOFError, KeyboardInterrupt):
+        logger.info("Guided mode stopped by the user")
         print("\nStopped.")
         return EXIT_OK
 
@@ -470,8 +493,8 @@ def build_parser() -> argparse.ArgumentParser:
     weights = search.add_mutually_exclusive_group(required=True)
     weights.add_argument("--profile", help="traveller profile from profiles.json, for example budget")
     weights.add_argument("--weights", help="own weights, for example price=40,duration=25,time=15,flex=20")
-    search.add_argument("--top", type=int, default=DEFAULT_TOP,
-                        help=f"how many ranked offers to show, 0 for all (default: {DEFAULT_TOP})")
+    search.add_argument("--top", type=int, default=SHOW_ALL,
+                        help="show only the first N ranked offers (default: all)")
     search.add_argument("--show-removed", action="store_true",
                         help="list every removed offer with the reasons")
 
@@ -499,15 +522,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the program and return its exit code."""
     parser = build_parser()
     args = parser.parse_args(argv)
-    log = configure_logging(args.logs)
+    command = args.command or "guided mode"
     try:
-        log.info("Command: %s", args.command or "(none)")
+        log = configure_logging(args.logs)
+    except OSError as error:
+        print(f"Error: cannot open the log file in {args.logs}: {error}")
+        return EXIT_ERROR
+    try:
+        log.info("Command: %s", command)
         if args.command is None:
             return run_guided(args)
         return COMMANDS[args.command](args)
     except BusBidderError as error:
-        log.error("%s", error)
+        log.error("%s failed: %s: %s", command, type(error).__name__, error)
         print(f"Error: {error}")
+        return EXIT_ERROR
+    except Exception:
+        # Last resort for a fault in the program itself. It is logged with
+        # its traceback, so it is never lost, and the user gets one line.
+        log.exception("Unexpected error in %s", command)
+        print(f"Error: unexpected problem. The details are in {args.logs / LOG_FILE_NAME}")
         return EXIT_ERROR
     finally:
         close_logging()

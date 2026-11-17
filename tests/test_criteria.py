@@ -63,6 +63,20 @@ class PriceAndDurationTests(unittest.TestCase):
         self.assertEqual(points("price", offers), [100, 50, 0])
         self.assertEqual(CRITERIA["price"].function(offers, REQUEST)[0].value, "30.00 EUR")
 
+    def test_small_ranges_are_not_stretched_to_the_full_scale(self):
+        # 2 euros apart with a 5 euro minimum range.
+        prices = [make_offer(serial=n, price=price) for n, price in enumerate((30, 32), 1)]
+        self.assertEqual(points("price", prices), [100, 60])
+        # 10 minutes apart with a 30 minute minimum range.
+        durations = [
+            make_offer(serial=1, arrival="2027-07-12T14:00"),
+            make_offer(serial=2, arrival="2027-07-12T14:10"),
+        ]
+        self.assertEqual(points("duration", durations), [100, 66.67])
+        # 0.5 kg apart with a 1 kg minimum range.
+        emissions = [make_offer(serial=1, emissions_kg=9.0), make_offer(serial=2, emissions_kg=9.5)]
+        self.assertEqual(points("emissions", emissions), [100, 50])
+
     def test_duration(self):
         offers = [
             make_offer(serial=1, arrival="2027-07-12T13:00"),  # 5 hours
@@ -131,6 +145,11 @@ class EmissionsTests(unittest.TestCase):
         self.assertTrue(scores[1].estimated)
         self.assertEqual(scores[1].value, "not reported")
         self.assertFalse(scores[0].estimated)
+
+    def test_missing_value_gets_the_median_and_not_the_mean(self):
+        # Reported points are 100, 80 and 0: the median is 80, the mean is 60.
+        offers = self.offers_with(9.0, 10.2, 15.0, None)
+        self.assertEqual(points("emissions", offers), [100, 80, 0, 80])
 
     def test_median_of_an_even_number_of_values(self):
         offers = self.offers_with(9.0, 15.0, None)

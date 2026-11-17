@@ -30,10 +30,10 @@ class RegistryTests(unittest.TestCase):
 
     def test_registering_a_name_twice_is_an_error(self):
         with self.assertRaises(ValueError):
-            constraint("budget")(lambda offer, request, seats_left: None)
+            constraint("budget", describe=lambda request: None)(lambda offer, request, seats_left: None)
 
     def test_a_new_constraint_is_used_by_the_filter_without_other_changes(self):
-        @constraint("test_only_basic")
+        @constraint("test_only_basic", describe=lambda request: "no basic fares")
         def no_basic_fares(offer, request, seats_left):
             return "basic fare" if offer.fare.fare_type == "basic" else None
 
@@ -41,6 +41,15 @@ class RegistryTests(unittest.TestCase):
         result = run_filter([make_offer("B"), make_offer("S", changeable=True)])
         self.assertEqual([offer.offer_id for offer in result.accepted], ["SR-MAL-0001-S"])
         self.assertEqual(result.counts["test_only_basic"], 1)
+        # The same registration also puts it in the list shown to the traveller.
+        self.assertEqual(describe_constraints(make_request())[-1], "no basic fares")
+
+    def test_every_constraint_has_a_check_and_a_description(self):
+        for name, rule in CONSTRAINTS.items():
+            with self.subTest(name=name):
+                self.assertEqual(rule.name, name)
+                self.assertTrue(callable(rule.check))
+                self.assertTrue(callable(rule.describe))
 
 
 class ScopeTests(unittest.TestCase):

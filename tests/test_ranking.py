@@ -55,9 +55,24 @@ class CheckWeightsTests(unittest.TestCase):
         self.assertIn("unknown criterion: comfort", str(caught.exception))
 
     def test_not_a_number_is_rejected(self):
-        for value in ("40", None, float("nan"), True):
-            with self.subTest(value=value), self.assertRaises(WeightError):
+        for value in ("40", None, float("nan"), float("inf"), True, 10 ** 400):
+            with self.subTest(value=str(value)[:12]), self.assertRaises(WeightError) as caught:
                 check_weights({"price": value, "duration": 25, "time": 15, "flex": 20})
+            self.assertIn("weight for price is not a usable number", str(caught.exception))
+
+    def test_fractions_must_total_one(self):
+        for flex in (0.1, 0.3):   # totals 0.9 and 1.1
+            with self.subTest(flex=flex), self.assertRaises(WeightError):
+                check_weights({"price": 0.4, "duration": 0.25, "time": 0.15, "flex": flex})
+
+    def test_each_core_criterion_needs_a_weight_above_zero(self):
+        full = {"price": 25, "duration": 25, "time": 25, "flex": 25}
+        for name in full:
+            # Move the weight to an optional criterion so the total stays 100.
+            weights = {**full, name: 0, "transfers": 25}
+            with self.subTest(name=name), self.assertRaises(WeightError) as caught:
+                check_weights(weights)
+            self.assertIn(f"no weight above 0 for: {name}", str(caught.exception))
 
     def test_core_criterion_with_zero_or_no_weight_is_rejected(self):
         for weights in (
@@ -166,6 +181,20 @@ class TieTests(unittest.TestCase):
         ranked = rank_offers([flexible, cheap], REQUEST, EQUAL_WEIGHTS)
         self.assertEqual([s.total for s in ranked], [75.0, 75.0])
         self.assertEqual([s.offer.offer_id for s in ranked], ["SR-MAL-0002-B", "SR-MAL-0001-F"])
+
+    def test_tie_is_decided_on_the_total_rounded_to_two_decimals(self):
+        # Weights price 25, duration 10, time 40, flex 25. A third offer sets the ranges
+        # (price 40 to 140, duration 399 to 899 minutes).
+        # cheap:  price 100.00 pts, duration 99.8 pts -> 25 + 9.98   + 40 = 74.98
+        # faster: price  99.93 pts, duration 100 pts  -> 24.9825 + 10 + 40 = 74.9825
+        # Unrounded, the faster offer is ahead. Rounded, both have 74.98 and price decides.
+        weights = {"price": 25, "duration": 10, "time": 40, "flex": 25}
+        cheap = make_offer(serial=1, price=40.00, arrival="2027-07-12T14:40")
+        faster = make_offer(serial=2, price=40.07, arrival="2027-07-12T14:39")
+        slow = make_offer(serial=3, price=140.00, arrival="2027-07-12T22:59")
+        ranked = rank_offers([faster, slow, cheap], REQUEST, weights)
+        self.assertEqual([(s.offer.offer_id, s.total) for s in ranked[:2]],
+                         [("SR-MAL-0001-B", 74.98), ("SR-MAL-0002-B", 74.98)])
 
     def test_equal_totals_and_prices_are_ordered_by_earlier_departure(self):
         later = make_offer(serial=1, departure="2027-07-12T09:00", arrival="2027-07-12T15:00")

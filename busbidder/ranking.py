@@ -53,8 +53,8 @@ def check_weights(weights: Mapping[str, float]) -> dict[str, float]:
             f"unknown criterion: {', '.join(unknown)}. Known criteria: {', '.join(CRITERIA)}"
         )
     for name, weight in weights.items():
-        if isinstance(weight, bool) or not isinstance(weight, Real) or not math.isfinite(weight):
-            raise WeightError(f"weight for {name} is not a number: {weight!r}")
+        if isinstance(weight, bool) or not isinstance(weight, Real) or not _is_finite(weight):
+            raise WeightError(f"weight for {name} is not a usable number: {weight!r}")
         if weight < 0:
             raise WeightError(f"weight for {name} is negative: {weight:g}")
     total = sum(weights.values())
@@ -71,6 +71,14 @@ def check_weights(weights: Mapping[str, float]) -> dict[str, float]:
             f"no weight above 0 for: {', '.join(missing)}"
         )
     return {name: weights[name] * scale for name in CRITERIA if weights.get(name, 0) > 0}
+
+
+def _is_finite(number: Real) -> bool:
+    """Return True for a finite number. A huge whole number counts as not finite."""
+    try:
+        return math.isfinite(number)
+    except OverflowError:
+        return False
 
 
 def dominant_criterion(weights: Mapping[str, float]) -> str | None:

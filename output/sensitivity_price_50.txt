@@ -46,5 +46,6 @@ Why #1 ranks first:
   SR-MAL-0008-S (SolRuta, standard fare) ranks first with 63.75 points out of 100.
   Compared with the runner-up CL-MAL-0007-S (63.24 points), it gains most on price (29.98 EUR against 38.19 EUR, +20.61 points).
   The runner-up is better on duration (6h 30m against 8h 00m, -13.85 points for the top offer).
+  Most of its total comes from price (29.98 EUR, 50.00 points) and flexibility (changeable, 10.00 points).
   Remaining disadvantage: duration (8h 00m scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.

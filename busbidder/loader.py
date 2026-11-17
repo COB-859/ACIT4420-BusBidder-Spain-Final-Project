@@ -88,8 +88,6 @@ class LoadResult:
 
 def read_rows(path: Path, columns: tuple[str, ...]) -> list[tuple[int, dict[str, str]]]:
     """Return the rows of a CSV file as (line number, values) pairs."""
-    if not path.is_file():
-        raise DataFileError(f"data file not found: {path}")
     try:
         # utf-8-sig also accepts a file saved by Excel with a byte-order mark.
         with path.open(encoding="utf-8-sig", newline="") as handle:
@@ -101,6 +99,8 @@ def read_rows(path: Path, columns: tuple[str, ...]) -> list[tuple[int, dict[str,
             if missing:
                 raise DataFileError(f"{path.name} has no column: {', '.join(missing)}")
             return [(reader.line_num, row) for row in reader]
+    except FileNotFoundError:
+        raise DataFileError(f"data file not found: {path}") from None
     except (OSError, UnicodeDecodeError, csv.Error) as error:
         raise DataFileError(f"cannot read {path}: {error}") from error
 
@@ -182,19 +182,41 @@ def _load_into(
     """Read one kind of record from its files into store, setting bad rows aside."""
     for position, file_name in enumerate(file_names):
         path = data_dir / file_name
-        if position > 0 and not path.is_file():
+        if position > 0 and not path.exists():
+            logger.info("Optional file %s not found, skipped", file_name)
             continue
+        accepted = 0
         for line, row in read_rows(path, columns):
             try:
+                _check_cell_count(row)
                 item = build(row)
                 key = key_of(item)
                 if key in store:
                     raise InvalidRecordError(f"duplicate {kind}: {key}")
                 store[key] = item
+                accepted += 1
             except InvalidRecordError as error:
                 raw = ",".join(row.get(column) or "" for column in columns)
                 rejected.append(RejectedRecord(file_name, line, error.reason, raw))
                 logger.warning("Rejected %s, line %d: %s", file_name, line, error.reason)
+        if position == 0 and accepted == 0:
+            # Without this, an emptied main file would let a row from the
+            # file of invalid examples become the only "valid" record.
+            raise DataFileError(f"{file_name} holds no valid rows")
+
+
+def _check_cell_count(row: dict) -> None:
+    """Reject a row with more or fewer values than the header has columns.
+
+    csv.DictReader keeps extra values under the key None and fills missing
+    ones with None, so a misplaced comma would otherwise go unnoticed.
+    """
+    extra = row.get(None)
+    if extra:
+        raise InvalidRecordError(f"row has {len(extra)} value(s) too many")
+    missing = [column for column, value in row.items() if column is not None and value is None]
+    if missing:
+        raise InvalidRecordError(f"row has too few values: nothing for {', '.join(missing)}")
 
 
 def load_all(data_dir: Path) -> LoadResult:
@@ -218,7 +240,8 @@ def load_all(data_dir: Path) -> LoadResult:
     )
     sold_out = result.sold_out()
     if sold_out:
-        logger.warning(
+        # A full bus is a normal state, not a fault, so this is not a warning.
+        logger.info(
             "%d departures are sold out in the data files (0 seats): %s",
             len(sold_out), ", ".join(departure.departure_id for departure in sold_out),
         )
@@ -227,7 +250,6 @@ def load_all(data_dir: Path) -> LoadResult:
 
 def write_rejected(rejected: list[RejectedRecord], path: Path) -> None:
     """Write the rejected rows to a text file, replacing the earlier one."""
-    path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "BusBidder Spain: rows set aside while loading the data files",
         f"Rejected rows: {len(rejected)}",
@@ -237,6 +259,7 @@ def write_rejected(rejected: list[RejectedRecord], path: Path) -> None:
         lines.append(record.describe())
         lines.append(f"    row: {record.row}")
     try:
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     except OSError as error:
         raise DataFileError(f"cannot write {path}: {error}") from error
@@ -244,10 +267,10 @@ def write_rejected(rejected: list[RejectedRecord], path: Path) -> None:
 
 def load_profiles(path: Path) -> dict[str, TravellerProfile]:
     """Read the traveller profiles from a JSON file."""
-    if not path.is_file():
-        raise DataFileError(f"profiles file not found: {path}")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise DataFileError(f"profiles file not found: {path}") from None
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise DataFileError(f"cannot read {path}: {error}") from error
     if not isinstance(data, dict) or not data:

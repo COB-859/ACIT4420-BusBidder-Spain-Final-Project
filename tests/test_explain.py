@@ -39,6 +39,12 @@ class ExplainTests(unittest.TestCase):
         text = explanation(three_offers())
         self.assertIn("Remaining disadvantage: price (40.00 EUR scores 50.0 of 100)", text)
 
+    def test_names_where_most_of_the_total_comes_from(self):
+        # Offer 2 contributions: duration 25, price 20, departure 15, flexibility 10.
+        text = explanation(three_offers())
+        self.assertIn("Most of its total comes from duration (5h 00m, 25.00 points) "
+                      "and price (40.00 EUR, 20.00 points).", text)
+
     def test_never_claims_to_be_objectively_best(self):
         text = explanation(three_offers())
         self.assertTrue(text.endswith(CLOSING))
@@ -87,6 +93,18 @@ class ExplainTests(unittest.TestCase):
         text = explanation(offers, weights=weights)
         self.assertIn("SR-MAL-0001-B", text.splitlines()[0])
         self.assertIn("emissions value is not reported", text)
+
+
+    def test_neutral_points_are_explained_when_no_offer_reports_emissions(self):
+        weights = {"price": 20, "duration": 20, "time": 10, "flex": 10, "emissions": 40}
+        offers = [
+            make_offer(serial=1, price=30, emissions_kg=None),
+            make_offer(serial=2, price=40, emissions_kg=None),
+        ]
+        text = explanation(offers, weights=weights)
+        self.assertIn("No ranked offer reports its emissions, so every offer gets "
+                      "the same neutral 50 points for it.", text)
+        self.assertNotIn("median", text)
 
 
 if __name__ == "__main__":

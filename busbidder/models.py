@@ -6,8 +6,10 @@ exists is always a valid one.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
+from numbers import Real
 from typing import Any
 
 from busbidder.exceptions import InvalidRecordError, InvalidRequestError
@@ -18,6 +20,7 @@ from busbidder.validation import (
     FARE_TYPES,
     RATING_MAX,
     RATING_MIN,
+    is_booking_reference,
     parse_clock_time,
     split_departure_id,
     split_offer_id,
@@ -260,6 +263,21 @@ class TimeBand:
         return cls(name=f"{clock:%H:%M}", start=clock, end=clock)
 
 
+def _is_whole_number(value: object) -> bool:
+    """Return True for an int that is not a bool."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_amount(value: object) -> bool:
+    """Return True for a finite number of at least 0 that is not a bool."""
+    return (
+        isinstance(value, Real)
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value >= 0
+    )
+
+
 def _minute_of_day(clock: time) -> int:
     """Return a clock time as minutes after midnight."""
     return clock.hour * 60 + clock.minute
@@ -302,8 +320,8 @@ class TravelRequest:
             )
         if self.passengers < 1:
             raise InvalidRequestError(f"passengers must be at least 1: {self.passengers}")
-        if self.budget is not None and self.budget <= 0:
-            raise InvalidRequestError(f"budget must be above 0: {self.budget:g}")
+        if self.budget is not None and not (math.isfinite(self.budget) and self.budget > 0):
+            raise InvalidRequestError(f"budget must be a number above 0: {self.budget:g}")
         for label, value in (
             ("maximum transfers", self.max_transfers),
             ("maximum duration", self.max_duration_minutes),
@@ -338,6 +356,22 @@ class Booking:
     status: str = STATUS_CONFIRMED
     payment_status: str = PAYMENT_SIMULATED
     refund_amount: float | None = None
+
+    def __post_init__(self) -> None:
+        # A booking can come from the bookings file, which a person may have
+        # edited, so every value is checked here as well.
+        if not isinstance(self.reference, str) or not is_booking_reference(self.reference):
+            raise InvalidRecordError(f"booking reference has the wrong form: {self.reference!r}")
+        if not _is_whole_number(self.passengers) or self.passengers < 1:
+            raise InvalidRecordError(f"passengers must be a whole number of at least 1: {self.passengers!r}")
+        if not _is_amount(self.total_price):
+            raise InvalidRecordError(f"total price must be a number of at least 0: {self.total_price!r}")
+        if self.refund_amount is not None and not _is_amount(self.refund_amount):
+            raise InvalidRecordError(f"refund must be a number of at least 0: {self.refund_amount!r}")
+        if self.status not in (STATUS_CONFIRMED, STATUS_CANCELLED):
+            raise InvalidRecordError(f"unknown booking status: {self.status!r}")
+        if not isinstance(self.fare, Fare):
+            raise InvalidRecordError("booking has no fare")
 
     @property
     def offer_id(self) -> str:
