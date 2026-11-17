@@ -209,5 +209,3 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | `sensitivity_price_50.txt` | The `search_spec_example` command with `--weights price=50,duration=20,time=10,flex=20 --top 3` |
 | `log_extract.txt` | Part of `logs/busbidder.log` from the runs above. |
 | `rejected_records.txt` | Written by every run. |
-
-
