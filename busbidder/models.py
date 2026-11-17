@@ -33,6 +33,11 @@ PAYMENT_SIMULATED = "paid (simulated)"
 PAYMENT_REFUNDED = "refunded (simulated)"
 
 
+def format_duration(minutes: int) -> str:
+    """Return minutes as text such as 6h 05m."""
+    return f"{minutes // 60}h {minutes % 60:02d}m"
+
+
 @dataclass(frozen=True)
 class Company:
     """A bus company."""
