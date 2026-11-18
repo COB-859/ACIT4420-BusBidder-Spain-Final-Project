@@ -80,24 +80,38 @@ python3 main.py cancel --ref BB-20261120-7K3QX9
 
 Use the reference printed by `book` in the `cancel` command. A booking is saved in `state/` and takes a seat, so later searches show one seat fewer on that bus. Delete the `state` folder to start again with no bookings.
 
+### What the program tells the traveller
+
+Every action ends by saying whether it worked, what changed and what to do next:
+
+| Action | Feedback |
+|---|---|
+| Search | The ranking and the explanation, then the exact command to book the top offer. A bus that could not take the party twice gets the note `only 1 seat left on this bus`: one passenger is warned at the last seat, a party of four below eight seats. When the first two offers are less than 1 point apart, a note says that a small change in the weights can change the winner. |
+| Search with no result | What is wrong with the offers and the value that would work, for example `47 of the 47 offers cost more than your budget of 20.00 EUR. The cheapest offer that meets your other requirements costs 29.98 EUR.` The value is taken from the offers that fail only that requirement, so it is one the traveller can act on. When no offer meets the other requirements either, the program says that one change is not enough. When the dates have no buses, it names the days that do: `BusBidder has buses from 10 July 2027 to 16 July 2027.` |
+| Book | `Booking confirmed: 2 flex seats to Malaga for 95.48 EUR.`, the reference, and the seats left on that bus, or `This bus is now sold out.` |
+| Book a full bus | `Not booked: this bus is sold out (SolRuta bus to Valencia, Sat 10 Jul 13:15).`, or how many seats are left. A full bus is not a mistake by the traveller, so the line does not start with `Error`. |
+| Cancel | `Booking BB-... is cancelled: 2 flex seats to Malaga.`, then `Refund: 85.93 EUR (90% of the 95.48 EUR paid).` or `No refund, because basic tickets are not refundable.` |
+| Bookings | The list with the refund of each cancelled booking, a count of confirmed and cancelled bookings, and how to cancel. |
+| A mistake on the command line | One line with the reason and the command that shows the options. |
+
 ### Options of `search` and `compare`
 
 | Option | Meaning |
 |---|---|
-| `--destination` | City name or code, for example `Malaga` or `MAL`. Required. |
+| `--destination` | City name or code, for example `Malaga` or `MAL`. Capitals and accents do not matter, so `málaga` works. Required. |
 | `--date-from`, `--date-to` | First and last travel date, both included, written as `2027-07-12`. Required. The data covers 10 to 16 July 2027. |
 | `--depart` | Preferred departure: `morning` (06:00 to 12:00), `afternoon` (12:00 to 18:00), `evening` (18:00 to 22:00), `night` (22:00 to 06:00) or a time such as `08:30`. Required. |
 | `--passengers` | Number of passengers. Default 1. |
 | `--budget` | Mandatory: highest price per person in EUR. |
 | `--max-transfers` | Mandatory: highest number of transfers. |
-| `--max-duration` | Mandatory: longest journey in minutes. |
+| `--max-duration` | Mandatory: longest journey in minutes, 1 or more. |
 | `--changeable`, `--refundable` | Mandatory: the ticket must be changeable or refundable. |
 | `--min-luggage` | Mandatory: lowest luggage allowance in kg. |
 | `--allow-dominant` | Accept weights where one criterion counts for more than 70%. Without it such weights are refused, so one criterion cannot dominate by accident. |
 | `--save FILE` | Also write the result to a file. |
 | `--profile KEY` | `search` only. One of `budget`, `business`, `flexible`, `eco` (from `data/profiles.json`). |
-| `--weights TEXT` | `search` only, instead of `--profile`. For example `price=40,duration=25,time=15,flex=20`. |
-| `--top N` | `search` only. Show only the first N ranked offers. By default every ranked offer is shown. |
+| `--weights TEXT` | `search` only, instead of `--profile`. For example `price=40,duration=25,time=15,flex=20`. A percent sign is allowed: `price=40%`. |
+| `--top N` | `search` only. Show only the first N ranked offers. By default, or with `--top 0`, every ranked offer is shown. |
 | `--show-removed` | `search` only. List every removed offer with the reasons. |
 | `--profiles KEY ...` | `compare` only. The profiles to compare. Default: all. |
 
@@ -116,7 +130,7 @@ Use the reference printed by `book` in the `cancel` command. A booking is saved 
 |---|---|
 | 0 | The command ran. A search that finds no offer is also 0. |
 | 1 | An error was reported, for example a missing data file, an unknown destination, weights that do not total 100, or no seats left. An unexpected fault in the program also gives 1, with the details in the log file. |
-| 2 | The command line could not be understood (reported by `argparse`). |
+| 2 | The command line could not be understood, for example a missing option or `--passengers two`. The program prints one line with the reason and the command that shows the options. |
 
 ## Running the tests
 
@@ -125,6 +139,27 @@ python3 -m unittest discover -s tests -t . -v
 ```
 
 The tests use only the standard library (`unittest`). They write to temporary folders and do not change the project's files.
+
+### Exploratory tests
+
+The unit tests check known answers. `tools/exploratory_tests.py` looks for what they did not think of, by using the program as a traveller would. It reads the real data files and writes bookings and logs only to a temporary folder.
+
+```bash
+python3 tools/exploratory_tests.py edge
+python3 tools/exploratory_tests.py rules
+python3 tools/exploratory_tests.py race
+python3 tools/exploratory_tests.py trials
+```
+
+| Part | What it does |
+|---|---|
+| `edge` | Runs 75 unusual commands, such as a date that does not exist, 1000 passengers or a booking on a full bus, and prints the exit code and the feedback for each. |
+| `rules` | Runs 300 random searches, 600 random bookings and cancellations and 1,500 random command lines, and checks rules that must hold for any input, for example that every ranked offer meets every mandatory condition and that a bus never has more seats booked than it has. |
+| `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares what the travellers were told with what was saved. |
+
+| `trials` | Measures how stable and how even-handed the ranking is: how much each criterion really decides in the specification's example, which company each profile recommends over 60 requests (15 cities with 4 departure periods), and how often the first two offers are less than 1 point apart. |
+
+`edge`, `rules` and `trials` print the same result on every run. `race` depends on timing, so its result can differ between runs. The command ends with exit code 1 when `edge` finds a crash or `rules` finds a broken rule.
 
 ## How offers are filtered and ranked
 
@@ -162,7 +197,8 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 | `busbidder/logsetup.py` | Log file configuration. |
 | `busbidder/cli.py` | Commands, guided mode, exit codes. The only module that prints. |
 | `tools/generate_data.py` | Generator for the four main data files. Fixed seed. |
-| `tests/` | Unit tests, one file per module and one for the data generator, and `helpers.py` with small builders. |
+| `tools/exploratory_tests.py` | Exploratory tests: unusual input, rules that must always hold, bookings at the same moment, and trials of the ranking. |
+| `tests/` | Unit tests, one file per module, one for the data generator and one for the feedback to the traveller (`test_feedback.py`), and `helpers.py` with small builders. |
 
 ## Input files (in `data/`)
 
@@ -212,3 +248,7 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | `sensitivity_price_50.txt` | The `search_spec_example` command with `--weights price=50,duration=20,time=10,flex=20 --top 3` |
 | `log_extract.txt` | Part of `logs/busbidder.log` from the runs above. |
 | `rejected_records.txt` | Written by every run. |
+| `exploratory_edge_cases.txt` | `python3 tools/exploratory_tests.py edge > output/exploratory_edge_cases.txt` |
+| `exploratory_rules.txt` | `python3 tools/exploratory_tests.py rules > output/exploratory_rules.txt` |
+| `exploratory_trials.txt` | `python3 tools/exploratory_tests.py trials > output/exploratory_trials.txt` |
+| `exploratory_simultaneous_bookings.txt` | `python3 tools/exploratory_tests.py race > output/exploratory_simultaneous_bookings.txt`. The result depends on timing. |

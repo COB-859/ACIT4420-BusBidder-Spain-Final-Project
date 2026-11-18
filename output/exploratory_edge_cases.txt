@@ -1,0 +1,272 @@
+ 1. destination as a code  [exit code 0]
+    command:  search --destination MAL --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Offers left to rank: 45
+ 2. destination in lower case  [exit code 0]
+    command:  search --destination malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Offers left to rank: 45
+ 3. destination with spaces around it  [exit code 0]
+    command:  search --destination ' Malaga ' --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Offers left to rank: 45
+ 4. destination with an accent  [exit code 0]
+    command:  search --destination Málaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Offers left to rank: 45
+ 5. destination left empty  [exit code 1]
+    command:  search --destination '' --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Error: unknown destination: ''. Known destinations: Barcelona, Valencia, Seville, Malaga, Granada, Cordoba, Bilbao, San Sebastian, Zaragoza, Alicante, Murcia, Salamanca, Toledo, Santiago de Compostela, Cadiz
+ 6. unknown destination  [exit code 1]
+    command:  search --destination Paris --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Error: unknown destination: 'Paris'. Known destinations: Barcelona, Valencia, Seville, Malaga, Granada, Cordoba, Bilbao, San Sebastian, Zaragoza, Alicante, Murcia, Salamanca, Toledo, Santiago de Compostela, Cadiz
+ 7. date in the wrong format  [exit code 1]
+    command:  search --destination Malaga --date-from 12-07-2027 --date-to 2027-07-14 --depart morning --profile budget
+    feedback: Error: first travel date must look like 2027-07-12: '12-07-2027'
+ 8. date that does not exist  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-02-30 --date-to 2027-03-01 --depart morning --profile budget
+    feedback: Error: first travel date is not a real date: '2027-02-30'
+ 9. last date before the first  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-14 --date-to 2027-07-12 --depart morning --profile budget
+    feedback: Error: last travel date 2027-07-12 is before first travel date 2027-07-14
+10. dates outside the data  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-08-01 --date-to 2027-08-02 --depart morning --profile budget
+    feedback: No buses found for these dates, so there is nothing to rank.
+    feedback: BusBidder has buses from 10 July 2027 to 16 July 2027.
+11. dates partly outside the data  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-16 --date-to 2027-07-20 --depart morning --profile budget
+    feedback: Note: some of your dates have no buses. BusBidder has buses from 10 July 2027 to 16 July 2027.
+    feedback: Offers left to rank: 14
+12. a single day  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-12 --depart morning --profile budget
+    feedback: Offers left to rank: 14
+    feedback: Note: the first two offers are only 0.20 points apart, so a small change in the weights can change which one ranks first.
+13. year 1 to year 9999  [exit code 0]
+    command:  search --destination Malaga --date-from 0001-01-01 --date-to 9999-12-31 --depart morning --profile budget
+    feedback: Note: some of your dates have no buses. BusBidder has buses from 10 July 2027 to 16 July 2027.
+    feedback: Offers left to rank: 104
+    feedback: Note: the first two offers are only 0.81 points apart, so a small change in the weights can change which one ranks first.
+14. departure 'noon'  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart noon --profile budget
+    feedback: Error: preferred departure must be one of morning, afternoon, evening, night, or a time like 08:30: 'noon'
+15. departure 25:00  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart 25:00 --profile budget
+    feedback: Error: preferred departure must be one of morning, afternoon, evening, night, or a time like 08:30: '25:00'
+16. departure 8:30 without the zero  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart 8:30 --profile budget
+    feedback: Offers left to rank: 45
+17. departure in capitals  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart MORNING --profile budget
+    feedback: Offers left to rank: 45
+18. departure at midnight  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart 00:00 --profile budget
+    feedback: Offers left to rank: 45
+19. 0 passengers  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --passengers 0
+    feedback: Error: passengers must be at least 1: 0
+20. -1 passengers  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --passengers -1
+    feedback: Error: passengers must be at least 1: -1
+21. passengers as a word  [exit code 2]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --passengers two
+    feedback: Error: argument --passengers: must be a whole number: 'two'.
+    feedback: Run 'python3 main.py search --help' to see the options.
+22. 1.5 passengers  [exit code 2]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --passengers 1.5
+    feedback: Error: argument --passengers: must be a whole number: '1.5'.
+    feedback: Run 'python3 main.py search --help' to see the options.
+23. 1000 passengers  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --passengers 1000
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 47 of the 47 offers have fewer than 1000 seats left.
+    feedback: The most seats left on one bus is 50.
+24. budget 0  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget 0
+    feedback: Error: budget must be a number above 0: 0
+25. budget -5  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget -5
+    feedback: Error: budget must be a number above 0: -5
+26. budget 'nan'  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget nan
+    feedback: Error: budget must be a number above 0: nan
+27. budget 'inf'  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget inf
+    feedback: Error: budget must be a number above 0: inf
+28. budget of 1 EUR  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget 1
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 47 of the 47 offers cost more than your budget of 1.00 EUR.
+    feedback: The cheapest offer costs 24.60 EUR.
+29. -1 transfers  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --max-transfers -1
+    feedback: Error: maximum transfers is negative: -1
+30. longest journey 0 minutes  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --max-duration 0
+    feedback: Error: longest journey must be at least 1 minute: 0
+31. longest journey 60 minutes  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --max-duration 60
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 47 of the 47 offers take longer than 1h 00m.
+    feedback: The shortest journey takes 5h 40m.
+32. no transfers and a budget of 30 EUR  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --max-transfers 0 --budget 30
+    feedback: Offers left to rank: 1
+33. budget of 20 EUR and a changeable ticket  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget 20 --changeable
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 47 of the 47 offers cost more than your budget of 20.00 EUR.
+    feedback: The cheapest offer that meets your other requirements costs 29.98 EUR.
+34. refundable ticket and a budget of 40 EUR  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --refundable --budget 40
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 29 of the 47 offers cannot be refunded.
+    feedback: Without this requirement, 18 offers would match.
+35. the specification's example request  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable --weights price=40,duration=25,time=15,flex=20 --top 1
+    feedback: Offers left to rank: 17
+    feedback: Note: the first two offers are only 0.42 points apart, so a small change in the weights can change which one ranks first.
+36. 999 kg of luggage  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --min-luggage 999
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 47 of the 47 offers allow less than 999 kg of luggage.
+    feedback: The highest luggage allowance is 30 kg.
+37. changeable ticket only, budget 30  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --changeable --budget 30
+    feedback: Offers left to rank: 1
+38. every requirement at once  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget 40 --max-transfers 0 --max-duration 400 --changeable --refundable --min-luggage 30
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 32 of the 47 offers allow less than 30 kg of luggage.
+    feedback: Changing this alone is not enough: no offer meets your other requirements either. Try removing a requirement.
+39. weights as fractions  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=0.4,duration=0.25,time=0.15,flex=0.2
+    feedback: Offers left to rank: 45
+40. weights with percent signs  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=40%,duration=25%,time=15%,flex=20%
+    feedback: Offers left to rank: 45
+41. weights with spaces  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights 'price = 40, duration = 25, time = 15, flex = 20'
+    feedback: Offers left to rank: 45
+42. weights that total 110  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=50,duration=25,time=15,flex=20
+    feedback: Error: weights must total 100 (or 1.0), but they total 110
+43. a negative weight  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=140,duration=-40,time=0,flex=0
+    feedback: Error: weight for duration is negative: -40
+44. only two weights  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=50,duration=50
+    feedback: Error: the ranking must use price, duration, time and flex; no weight above 0 for: time, flex
+45. weights with a colon  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price:40,duration:25,time:15,flex:20
+    feedback: Error: weights must be written as name=number, separated by commas: 'price:40'
+46. an unknown criterion  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=40,duration=25,time=15,flex=10,comfort=10
+    feedback: Error: unknown criterion: comfort. Known criteria: price, duration, time, flex, transfers, rating, emissions
+47. a weight given twice  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=20,price=20,duration=25,time=15,flex=20
+    feedback: Error: weight given twice: price
+48. one weight at 80%  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=80,duration=10,time=5,flex=5
+    feedback: Error: Price has a weight of 80%, above 70%, so it would decide most of the ranking. If that is intended, add --allow-dominant
+49. one weight at 80%, confirmed  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=80,duration=10,time=5,flex=5 --allow-dominant
+    feedback: Offers left to rank: 45
+50. profile and weights together  [exit code 2]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --weights price=40,duration=25,time=15,flex=20
+    feedback: Error: argument --weights: not allowed with argument --profile.
+    feedback: Run 'python3 main.py search --help' to see the options.
+51. neither profile nor weights  [exit code 2]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning
+    feedback: Error: one of the arguments --profile --weights is required.
+    feedback: Run 'python3 main.py search --help' to see the options.
+52. unknown profile  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile student
+    feedback: Error: unknown profile: 'student'. Known profiles: budget, business, flexible, eco
+53. --top -3  [exit code 2]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --top -3
+    feedback: Error: argument --top: must be 0 or more: '-3'.
+    feedback: Run 'python3 main.py search --help' to see the options.
+54. --top 999  [exit code 0]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --top 999
+    feedback: Offers left to rank: 45
+55. save to a place that is not a folder  [exit code 1]
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --save '<project>/data/companies.csv/result.txt'
+    feedback: Offers left to rank: 45
+    feedback: Error: the result is shown above, but it could not be saved to <project>/data/companies.csv/result.txt: File exists
+56. only the destination given  [exit code 2]
+    command:  search --destination Malaga
+    feedback: Error: the following arguments are required: --date-from, --date-to, --depart.
+    feedback: Run 'python3 main.py search --help' to see the options.
+57. compare with an unknown profile  [exit code 1]
+    command:  compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profiles budget student
+    feedback: Error: unknown profile: 'student'. Known profiles: budget, business, flexible, eco
+58. compare with a budget of 1 EUR  [exit code 0]
+    command:  compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 1
+    feedback: Offers left to rank: 0
+    feedback: No buses match all your requirements.
+    feedback: 47 of the 47 offers cost more than your budget of 1.00 EUR.
+    feedback: The cheapest offer costs 24.60 EUR.
+59. bookings before any booking  [exit code 0]
+    command:  bookings
+    feedback: You have no bookings yet. Search for a bus, then use the book command.
+60. book 2 flex seats  [exit code 0]
+    command:  book --offer CL-MAL-0007-F --passengers 2
+    feedback: Booking confirmed: 2 flex seats to Malaga for 95.48 EUR.
+    feedback: Seats left on this bus: 42
+61. book with the offer ID in lower case  [exit code 0]
+    command:  book --offer cl-mal-0007-s
+    feedback: Booking confirmed: 1 standard seat to Malaga for 38.19 EUR.
+    feedback: Seats left on this bus: 41
+62. book 0 passengers  [exit code 1]
+    command:  book --offer CL-MAL-0007-S --passengers 0
+    feedback: Error: passengers must be at least 1: 0
+63. book 50 seats on a bus with fewer  [exit code 1]
+    command:  book --offer CL-MAL-0007-S --passengers 50
+    feedback: Not booked: this bus has only 41 seats left, but you asked for 50 (CostaLink bus to Malaga, Tue 13 Jul 08:30). Try fewer passengers or another bus.
+64. book the last 2 seats of a bus  [exit code 0]
+    command:  book --offer SR-VAL-0002-S --passengers 2
+    feedback: Booking confirmed: 2 standard seats to Valencia for 44.10 EUR.
+    feedback: This bus is now sold out.
+65. book that bus again  [exit code 1]
+    command:  book --offer SR-VAL-0002-B
+    feedback: Not booked: this bus is sold out (SolRuta bus to Valencia, Sat 10 Jul 13:15). Search again to see buses that still have seats.
+66. book a bus with no seats in the data  [exit code 1]
+    command:  book --offer SR-COR-0001-B
+    feedback: Not booked: this bus is sold out (SolRuta bus to Cordoba, Sat 10 Jul 08:15). Search again to see buses that still have seats.
+67. book an unknown offer  [exit code 1]
+    command:  book --offer XX
+    feedback: Error: unknown offer: 'XX', so nothing was booked. Use an offer ID from the search results, such as CL-MAL-0007-S.
+68. book a fare that bus does not sell  [exit code 1]
+    command:  book --offer SR-VAL-0002-F
+    feedback: Error: unknown offer: 'SR-VAL-0002-F', so nothing was booked. Use an offer ID from the search results, such as CL-MAL-0007-S.
+69. cancel the 2 flex seats (90% refundable)  [exit code 0]
+    command:  cancel --ref BB-<date>-<code>
+    feedback: Booking BB-<date>-<code> is cancelled: 2 flex seats to Malaga.
+    feedback: Refund: 85.93 EUR (90% of the 95.48 EUR paid).
+    feedback: Seats left on this bus: 43
+70. cancel the same booking again  [exit code 1]
+    command:  cancel --ref BB-<date>-<code>
+    feedback: Error: booking BB-<date>-<code> is already cancelled. Its refund was 85.93 EUR.
+71. cancel a standard seat, reference in lower case  [exit code 0]
+    command:  cancel --ref ' BB-<date>-<code> '
+    feedback: Booking BB-<date>-<code> is cancelled: 1 standard seat to Malaga.
+    feedback: No refund, because standard tickets are not refundable.
+    feedback: Seats left on this bus: 44
+72. bookings after booking and cancelling  [exit code 0]
+    command:  bookings
+    feedback: 3 bookings: 1 confirmed, 2 cancelled.
+73. cancel a reference in the wrong format  [exit code 1]
+    command:  cancel --ref hello
+    feedback: Error: booking reference must look like BB-<date>-<code>: 'hello'
+74. cancel a reference that does not exist  [exit code 1]
+    command:  cancel --ref BB-<date>-<code>
+    feedback: Error: no booking found with the reference BB-<date>-<code>. The bookings command lists your references.
+75. an unknown command  [exit code 2]
+    command:  frobnicate
+    feedback: Error: argument command: invalid choice: 'frobnicate' (choose from 'validate', 'search', 'compare', 'book', 'bookings', 'cancel').
+    feedback: Run 'python3 main.py --help' to see the options.
+
+75 cases run. Crashes or unexpected faults: 0

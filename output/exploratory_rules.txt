@@ -1,0 +1,21 @@
+ Checks  Result  Rule
+  16134  held    every ranked offer meets every mandatory condition
+  16134  held    criterion points are between 0 and 100
+  16134  held    the total is the sum of the contributions
+  16134  held    the total is between 0 and 100
+    300  held    no offer is lost: kept + removed = offers for the city and dates
+    300  held    the ranking is ordered best first
+    300  held    the ranking does not depend on the order of the data rows
+    300  held    weights as fractions rank like weights as percentages
+    180  held    a higher budget never removes an offer
+    300  held    more passengers never add an offer
+    270  held    more weight on price never picks a winner that is worse on price
+     68  held    a booking reference has the right format
+   3354  held    a bus never has more seats booked than it has
+   3354  held    seats left = seats of the bus - seats of active bookings
+    600  held    booking references are unique
+    477  held    a refused action changes nothing in the bookings file
+     55  held    the refund is the stored percentage of the price paid
+   1500  held    random words on the command line never crash the program
+
+75894 checks, 0 failed (seed 4420).
