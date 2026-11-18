@@ -1,10 +1,10 @@
-Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)
+Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger
 
 Mandatory conditions (an offer that fails one is removed before ranking):
   - destination Malaga, departure on 2027-07-12 to 2027-07-14 (these decide which offers are searched)
-  - at least 1 seat(s) left
+  - at least 1 seat left
   - price per person at most 50.00 EUR
-  - at most 1 transfer(s)
+  - at most 1 transfer
   - ticket must be changeable
 
 Preferred departure: morning (06:00 to 12:00)
@@ -23,19 +23,19 @@ business  VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   
 flexible  VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   81.93
 eco       VB-MAL-0005-S  VerdeBus        Wed 14 Jul 10:15    43.38 EUR 6h 30m   standard   81.93
 
-The 4 profiles recommend 2 different offer(s).
+The 4 profiles recommend 2 different offers.
 
 ------------------------------------------------------------------------
 Profile 'budget': Budget traveller: the price matters most
 Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
 ------------------------------------------------------------------------
 #1  SR-MAL-0008-S  SolRuta, standard fare   TOTAL 68.75
-    Wed 14 Jul 15:45 -> 23:45 (8h 00m), 1 transfer(s), 46 seat(s) left, luggage 20 kg
+    Wed 14 Jul 15:45 -> 23:45 (8h 00m), 1 transfer, 46 seats left, luggage 20 kg
     Price       29.98 EUR                  100.0 pts x    55% =  55.00
     Duration    8h 00m                       0.0 pts x    15% =   0.00
     Departure   15:45                       37.5 pts x    10% =   3.75
     Flexibility changeable                  50.0 pts x    10% =   5.00
-    Transfers   1 transfer(s)               50.0 pts x    10% =   5.00
+    Transfers   1 transfer                  50.0 pts x    10% =   5.00
     next: #2 CL-MAL-0007-S (67.72), #3 CL-MAL-0009-S (62.19)
 
   SR-MAL-0008-S (SolRuta, standard fare) ranks first with 68.75 points out of 100.
@@ -50,7 +50,7 @@ Profile 'business': Business traveller: a short journey at the right time of day
 Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
 ------------------------------------------------------------------------
 #1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 82.50
-    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
+    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seats left, luggage 20 kg
     Price       43.38 EUR                   32.7 pts x    10% =   3.27
     Duration    6h 30m                      69.2 pts x    35% =  24.23
     Departure   10:15                      100.0 pts x    30% =  30.00
@@ -69,7 +69,7 @@ Profile 'flexible': Flexibility-focused tourist: a ticket that can be changed or
 Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
 ------------------------------------------------------------------------
 #1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 81.93
-    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
+    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seats left, luggage 20 kg
     Price       43.38 EUR                   32.7 pts x    20% =   6.55
     Duration    6h 30m                      69.2 pts x    15% =  10.38
     Departure   10:15                      100.0 pts x    15% =  15.00
@@ -87,7 +87,7 @@ Profile 'eco': Environment-focused traveller: low emissions per passenger
 Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
 ------------------------------------------------------------------------
 #1  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 81.93
-    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
+    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seats left, luggage 20 kg
     Price       43.38 EUR                   32.7 pts x    20% =   6.55
     Duration    6h 30m                      69.2 pts x    15% =  10.38
     Departure   10:15                      100.0 pts x    10% =  10.00
@@ -100,3 +100,5 @@ Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
   Its largest contributions come from emissions (8.6 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
   Remaining disadvantage: price (43.38 EUR scores 32.7 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
+
+Next step: to see the full ranking for one profile, use the search command with --profile. To book, use the book command with an offer ID.

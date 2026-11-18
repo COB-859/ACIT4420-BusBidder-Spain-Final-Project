@@ -10,10 +10,10 @@ in TravelRequest and a command-line option.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
-from busbidder.models import Offer, TravelRequest, format_duration
+from busbidder.models import Offer, TravelRequest, count_of, format_duration
 
 # The check gets the offer, the request and the seats left on the offer's
 # departure. It returns None when the offer passes, or the reason it fails.
@@ -21,51 +21,80 @@ CheckFunction = Callable[[Offer, TravelRequest, int], "str | None"]
 # The description says what the traveller asked for, or None when the
 # traveller did not set this condition.
 DescribeFunction = Callable[[TravelRequest], "str | None"]
+# Given the offers that fail only this constraint, and the words " that
+# meets your other requirements" or nothing, the suggestion names the
+# value that would work, such as the cheapest price.
+SuggestFunction = Callable[[Sequence["RemovedOffer"], str], str]
 
 
 @dataclass(frozen=True)
 class Constraint:
-    """A registered hard constraint: its name, its check and its description."""
+    """A registered hard constraint: its name, its check and its texts.
+
+    problem and suggest are used when no offer is left. problem says what
+    is wrong with the offers, in the traveller's words ("cost more than
+    your budget of 20.00 EUR"). suggest names the value that would work.
+    """
 
     name: str
     check: CheckFunction
     describe: DescribeFunction
+    problem: DescribeFunction | None = None
+    suggest: SuggestFunction | None = None
 
 
 CONSTRAINTS: dict[str, Constraint] = {}
 
 
-def constraint(name: str, describe: DescribeFunction) -> Callable[[CheckFunction], CheckFunction]:
+def constraint(
+    name: str,
+    describe: DescribeFunction,
+    problem: DescribeFunction | None = None,
+    suggest: SuggestFunction | None = None,
+) -> Callable[[CheckFunction], CheckFunction]:
     """Register the decorated function as the hard constraint called name.
 
     describe turns a request into the text shown to the traveller, so a
     constraint that filters offers is always also listed as a mandatory
-    condition.
+    condition. problem and suggest give the advice shown when no offer is
+    left.
     """
 
     def register(function: CheckFunction) -> CheckFunction:
         if name in CONSTRAINTS:
             raise ValueError(f"constraint {name!r} is registered twice")
-        CONSTRAINTS[name] = Constraint(name, function, describe)
+        CONSTRAINTS[name] = Constraint(name, function, describe, problem, suggest)
         return function
 
     return register
 
 
-@constraint("seats", describe=lambda request: f"at least {request.passengers} seat(s) left")
+@constraint(
+    "seats",
+    describe=lambda request: f"at least {count_of(request.passengers, 'seat')} left",
+    problem=lambda request: "are sold out" if request.passengers == 1
+    else f"have fewer than {request.passengers} seats left",
+    suggest=lambda alone, others: (
+        f"The most seats left on one bus{others} is {max(entry.seats_left for entry in alone)}."
+    ),
+)
 def enough_seats(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The departure must have a seat for every passenger."""
     if seats_left >= request.passengers:
         return None
     if seats_left == 0:
         return "sold out"
-    return f"{seats_left} seat(s) left, {request.passengers} needed"
+    return f"{count_of(seats_left, 'seat')} left, {request.passengers} needed"
 
 
 @constraint(
     "budget",
     describe=lambda request: None if request.budget is None
     else f"price per person at most {request.budget:.2f} EUR",
+    problem=lambda request: f"cost more than your budget of {request.budget:.2f} EUR",
+    suggest=lambda alone, others: (
+        f"The cheapest offer{others} costs {min(entry.offer.price for entry in alone):.2f} EUR."
+    ),
 )
 def within_budget(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The price per person must not be above the budget."""
@@ -77,19 +106,29 @@ def within_budget(offer: Offer, request: TravelRequest, seats_left: int) -> str 
 @constraint(
     "transfers",
     describe=lambda request: None if request.max_transfers is None
-    else f"at most {request.max_transfers} transfer(s)",
+    else f"at most {count_of(request.max_transfers, 'transfer')}",
+    problem=lambda request: f"have more than {count_of(request.max_transfers, 'transfer')}",
+    suggest=lambda alone, others: (
+        f"The offer with the fewest transfers{others} has "
+        f"{count_of(min(entry.offer.departure.transfers for entry in alone), 'transfer')}."
+    ),
 )
 def few_enough_transfers(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The journey must not have more transfers than allowed."""
     if request.max_transfers is None or offer.departure.transfers <= request.max_transfers:
         return None
-    return f"{offer.departure.transfers} transfer(s), at most {request.max_transfers} allowed"
+    return f"{count_of(offer.departure.transfers, 'transfer')}, at most {request.max_transfers} allowed"
 
 
 @constraint(
     "duration",
     describe=lambda request: None if request.max_duration_minutes is None
     else f"journey at most {format_duration(request.max_duration_minutes)}",
+    problem=lambda request: f"take longer than {format_duration(request.max_duration_minutes)}",
+    suggest=lambda alone, others: (
+        f"The shortest journey{others} takes "
+        f"{format_duration(min(entry.offer.duration_minutes for entry in alone))}."
+    ),
 )
 def short_enough(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The journey must not be longer than the limit."""
@@ -105,6 +144,10 @@ def short_enough(offer: Offer, request: TravelRequest, seats_left: int) -> str |
 @constraint(
     "changeable",
     describe=lambda request: "ticket must be changeable" if request.require_changeable else None,
+    problem=lambda request: "cannot be changed",
+    suggest=lambda alone, others: (
+        f"Without this requirement, {count_of(len(alone), 'offer')} would match."
+    ),
 )
 def changeable_if_required(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The ticket must be changeable when the traveller requires it."""
@@ -116,6 +159,10 @@ def changeable_if_required(offer: Offer, request: TravelRequest, seats_left: int
 @constraint(
     "refundable",
     describe=lambda request: "ticket must be refundable" if request.require_refundable else None,
+    problem=lambda request: "cannot be refunded",
+    suggest=lambda alone, others: (
+        f"Without this requirement, {count_of(len(alone), 'offer')} would match."
+    ),
 )
 def refundable_if_required(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The ticket must be refundable when the traveller requires it."""
@@ -128,6 +175,11 @@ def refundable_if_required(offer: Offer, request: TravelRequest, seats_left: int
     "luggage",
     describe=lambda request: None if request.min_luggage_kg is None
     else f"luggage allowance at least {request.min_luggage_kg} kg",
+    problem=lambda request: f"allow less than {request.min_luggage_kg} kg of luggage",
+    suggest=lambda alone, others: (
+        f"The highest luggage allowance{others} is "
+        f"{max(entry.offer.fare.luggage_kg for entry in alone)} kg."
+    ),
 )
 def enough_luggage(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The luggage allowance must cover what the traveller needs."""
@@ -161,6 +213,7 @@ class RemovedOffer:
 
     offer: Offer
     reasons: dict[str, str]
+    seats_left: int = 0
 
 
 @dataclass
@@ -203,7 +256,41 @@ def filter_offers(
                 reasons[name] = reason
                 result.counts[name] += 1
         if reasons:
-            result.removed.append(RemovedOffer(offer, reasons))
+            result.removed.append(RemovedOffer(offer, reasons, left))
         else:
             result.accepted.append(offer)
     return result
+
+
+def advise(result: FilterResult, request: TravelRequest) -> list[str]:
+    """Say why no offer is left and which value would work.
+
+    The advice is about the constraint that removed the most offers. Its
+    suggestion is worked out from the offers that fail only that
+    constraint, because those are the offers the traveller gets by
+    changing it. The cheapest offer of all is the wrong answer when it
+    also fails another requirement.
+    """
+    name = result.strictest()
+    if name is None:
+        return []
+    rule = CONSTRAINTS[name]
+    problem = (rule.problem(request) if rule.problem is not None else None) or f"fail the condition '{name}'"
+    lines = [f"{result.counts[name]} of the {result.in_scope} offers {problem}."]
+    alone = [entry for entry in result.removed if set(entry.reasons) == {name}]
+    if not alone:
+        lines.append(
+            "Changing this alone is not enough: no offer meets your other requirements either. "
+            "Try removing a requirement."
+        )
+    elif rule.suggest is not None:
+        # "at least 1 seat left" is always a condition, so it is only
+        # mentioned as another requirement when the traveller asked for more.
+        set_by_traveller = {
+            other for other, constraint_rule in CONSTRAINTS.items()
+            if other != name and constraint_rule.describe(request) is not None
+            and not (other == "seats" and request.passengers == 1)
+        }
+        others = " that meets your other requirements" if set_by_traveller else ""
+        lines.append(rule.suggest(alone, others))
+    return lines

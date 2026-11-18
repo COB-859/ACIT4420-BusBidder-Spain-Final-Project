@@ -12,6 +12,7 @@ import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -80,6 +81,11 @@ class LoadResult:
     def offers(self) -> list[Offer]:
         """Return every fare joined with its departure."""
         return [Offer(self.departures[fare.departure_id], fare) for fare in self.fares.values()]
+
+    def travel_days(self) -> tuple[date, date] | None:
+        """Return the first and the last day with a departure, or None without data."""
+        days = [departure.departure.date() for departure in self.departures.values()]
+        return (min(days), max(days)) if days else None
 
     def sold_out(self) -> list[Departure]:
         """Return the departures that have no seats in the data file."""

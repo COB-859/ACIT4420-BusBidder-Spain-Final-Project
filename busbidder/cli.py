@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import math
+import unicodedata
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,16 +18,19 @@ from busbidder.display import (
     format_comparison,
     format_confirmation,
     format_filter,
+    format_next_step,
     format_preferences,
     format_ranking,
     format_removed,
     format_request,
+    format_seats_after,
 )
 from busbidder.exceptions import (
     BusBidderError,
     DataFileError,
     InvalidRecordError,
     InvalidRequestError,
+    NoSeatsError,
     WeightError,
 )
 from busbidder.loader import (
@@ -38,7 +42,7 @@ from busbidder.loader import (
     write_rejected,
 )
 from busbidder.logsetup import LOG_FILE_NAME, close_logging, configure_logging
-from busbidder.models import Destination, TimeBand, TravellerProfile, TravelRequest
+from busbidder.models import Destination, TimeBand, TravellerProfile, TravelRequest, count_of
 from busbidder.ranking import (
     ScoredOffer,
     check_weights,
@@ -53,6 +57,7 @@ logger = logging.getLogger("busbidder.cli")
 
 EXIT_OK = 0
 EXIT_ERROR = 1
+EXIT_USAGE = 2
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_STATE_DIR = Path("state")
 DEFAULT_LOG_DIR = Path("logs")
@@ -88,11 +93,17 @@ def open_session(args: argparse.Namespace, need_profiles: bool = True) -> Sessio
     return Session(data, profiles, store, ledger)
 
 
+def plain(text: str) -> str:
+    """Return text in lower case without accents, so 'Málaga' matches 'Malaga'."""
+    decomposed = unicodedata.normalize("NFKD", text.strip())
+    return "".join(letter for letter in decomposed if not unicodedata.combining(letter)).casefold()
+
+
 def find_destination(text: str, destinations: Mapping[str, Destination]) -> Destination:
     """Return the destination with the given name or code."""
-    key = text.strip().lower()
+    key = plain(text)
     for destination in destinations.values():
-        if key in (destination.name.lower(), destination.code.lower()):
+        if key in (plain(destination.name), plain(destination.code)):
             return destination
     names = ", ".join(destination.name for destination in destinations.values())
     raise InvalidRequestError(f"unknown destination: {text!r}. Known destinations: {names}")
@@ -160,7 +171,10 @@ def emit(lines: Sequence[str], save: Path | None = None) -> None:
         save.parent.mkdir(parents=True, exist_ok=True)
         save.write_text(text + "\n", encoding="utf-8")
     except OSError as error:
-        raise DataFileError(f"cannot write {save}: {error}") from error
+        reason = error.strerror or str(error)
+        raise DataFileError(
+            f"the result is shown above, but it could not be saved to {save}: {reason}"
+        ) from error
     print(f"\nSaved to {save}")
 
 
@@ -193,8 +207,12 @@ def run_validate(args: argparse.Namespace) -> int:
     in_main_files = [record for record in data.rejected if not record.source.endswith(INVALID_SUFFIX)]
     if in_main_files:
         logger.error("%d row(s) of the main data files were rejected", len(in_main_files))
-        print(f"  Result: {len(in_main_files)} row(s) of the main data files were rejected.")
-    elif not problems:
+        print(f"  Result: {count_of(len(in_main_files), 'row')} of the main data files "
+              f"{'was' if len(in_main_files) == 1 else 'were'} rejected.")
+    elif problems:
+        print(f"  Result: {count_of(len(problems), 'profile')} in {PROFILES_FILE} "
+              f"{'is' if len(problems) == 1 else 'are'} invalid.")
+    else:
         print("  Result: the main data files and the profiles are valid.")
     return EXIT_ERROR if problems or in_main_files else EXIT_OK
 
@@ -224,10 +242,10 @@ def search_report(
     ranked = rank_offers(result.accepted, request, weights)
     lines = format_request(request)
     lines += format_preferences(request, weights, source)
-    lines += format_filter(result)
+    lines += format_filter(result, request, session.data.travel_days())
     if show_removed and result.removed:
         lines += format_removed(result)
-    lines += format_ranking(ranked, weights, seats_left, top)
+    lines += format_ranking(ranked, weights, seats_left, top, request.passengers)
     logger.info(
         "Search: %s, %s to %s, weights from %s: %d in scope, %d removed, %d ranked, top offer %s",
         request.destination.name, request.date_from, request.date_to, source,
@@ -247,8 +265,8 @@ def run_search(args: argparse.Namespace) -> int:
     else:
         weights, source = weights_from_profile(args.profile, session)
     require_intended_dominance(weights, args.allow_dominant)
-    lines, _ranked = search_report(session, request, weights, source, args.top, args.show_removed)
-    emit(lines, args.save)
+    lines, ranked = search_report(session, request, weights, source, args.top, args.show_removed)
+    emit(lines + format_next_step(ranked, request.passengers), args.save)
     return EXIT_OK
 
 
@@ -267,9 +285,14 @@ def run_compare(args: argparse.Namespace) -> int:
         results[key] = (profile.description, weights, rank_offers(result.accepted, request, weights))
     lines = format_request(request)
     lines += ["", f"Preferred departure: {request.preferred_departure.describe()}"]
-    lines += format_filter(result)
+    lines += format_filter(result, request, session.data.travel_days())
     if result.accepted:
-        lines += format_comparison(results, seats_left)
+        lines += format_comparison(results, seats_left, request.passengers)
+        lines += [
+            "",
+            "Next step: to see the full ranking for one profile, use the search command "
+            "with --profile. To book, use the book command with an offer ID.",
+        ]
     logger.info(
         "Compare: %s, %s to %s, profiles %s: %d ranked, top offers %s",
         request.destination.name, request.date_from, request.date_to, ", ".join(keys),
@@ -290,7 +313,7 @@ def seats_line(session: Session, service: BookingService, departure_id: str) -> 
     """Return the line that says how many seats a departure has left."""
     if departure_id not in session.data.departures:
         return f"Departure {departure_id} is no longer in the data files."
-    return f"Seats left on departure {departure_id}: {service.seats_left(departure_id)}"
+    return format_seats_after(service.seats_left(departure_id))
 
 
 def run_book(args: argparse.Namespace) -> int:
@@ -432,6 +455,7 @@ def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
         lines, ranked = search_report(session, request, weights, source)
         emit(lines)
         if not ranked:
+            print("Nothing to book. Start again with other dates or fewer requirements.")
             return EXIT_OK
         shown = len(ranked)
 
@@ -447,7 +471,7 @@ def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
             return EXIT_OK
         offer = ranked[rank - 1].offer
         question = (
-            f"Book {offer.offer_id} for {request.passengers} passenger(s), "
+            f"Book {offer.offer_id} for {count_of(request.passengers, 'passenger')}, "
             f"{offer.price * request.passengers:.2f} EUR in total? (y/N): "
         )
         if not ask(read, question, to_yes_no):
@@ -459,7 +483,7 @@ def run_guided(args: argparse.Namespace, read: Reader | None = None) -> int:
         return EXIT_OK
     except (EOFError, KeyboardInterrupt):
         logger.info("Guided mode stopped by the user")
-        print("\nStopped.")
+        print("\nStopped. Nothing was booked.")
         return EXIT_OK
 
 
@@ -471,6 +495,33 @@ COMMANDS = {
     "bookings": run_bookings,
     "cancel": run_cancel,
 }
+
+
+class FriendlyParser(argparse.ArgumentParser):
+    """An argument parser that reports a mistake in one line.
+
+    The standard parser prints its whole usage text before the reason,
+    which hides the reason from the traveller.
+    """
+
+    def error(self, message: str) -> None:
+        """Print the reason and where to find the options, then stop with code 2."""
+        self.exit(EXIT_USAGE, f"Error: {message}.\nRun 'python3 {self.prog} --help' to see the options.\n")
+
+
+def whole_number(minimum: int) -> Callable[[str], int]:
+    """Return a converter for a whole number that is at least minimum."""
+
+    def convert(text: str) -> int:
+        try:
+            number = int(text)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"must be a whole number: {text!r}") from None
+        if number < minimum:
+            raise argparse.ArgumentTypeError(f"must be {minimum} or more: {text!r}")
+        return number
+
+    return convert
 
 
 def _add_folder_options(parser: argparse.ArgumentParser, top_level: bool) -> None:
@@ -496,7 +547,7 @@ def _add_request_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--date-to", required=True, help="last travel date, for example 2027-07-14")
     parser.add_argument("--depart", required=True,
                         help="preferred departure: morning, afternoon, evening, night or a time like 08:30")
-    parser.add_argument("--passengers", type=int, default=1, help="number of passengers (default: 1)")
+    parser.add_argument("--passengers", type=whole_number(-10**9), default=1, help="number of passengers (default: 1)")
     parser.add_argument("--budget", type=float, help="mandatory: highest price per person in EUR")
     parser.add_argument("--max-transfers", type=int, help="mandatory: highest number of transfers")
     parser.add_argument("--max-duration", type=int, help="mandatory: longest journey in minutes")
@@ -510,7 +561,7 @@ def _add_request_options(parser: argparse.ArgumentParser) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     """Return the argument parser for the program."""
-    parser = argparse.ArgumentParser(
+    parser = FriendlyParser(
         prog="main.py",
         description="BusBidder Spain: filter, rank and book simulated bus offers. "
                     "Run without a command for the guided mode.",
@@ -528,7 +579,7 @@ def build_parser() -> argparse.ArgumentParser:
     weights = search.add_mutually_exclusive_group(required=True)
     weights.add_argument("--profile", help="traveller profile from profiles.json, for example budget")
     weights.add_argument("--weights", help="own weights, for example price=40,duration=25,time=15,flex=20")
-    search.add_argument("--top", type=int, default=SHOW_ALL,
+    search.add_argument("--top", type=whole_number(0), default=SHOW_ALL,
                         help="show only the first N ranked offers (default: all)")
     search.add_argument("--show-removed", action="store_true",
                         help="list every removed offer with the reasons")
@@ -542,7 +593,7 @@ def build_parser() -> argparse.ArgumentParser:
     book = commands.add_parser("book", help="book an offer (simulated, no payment)")
     _add_folder_options(book, top_level=False)
     book.add_argument("--offer", required=True, help="offer ID from a ranking, for example SR-MAL-0001-B")
-    book.add_argument("--passengers", type=int, default=1, help="number of passengers (default: 1)")
+    book.add_argument("--passengers", type=whole_number(-10**9), default=1, help="number of passengers (default: 1)")
 
     bookings = commands.add_parser("bookings", help="list the saved bookings")
     _add_folder_options(bookings, top_level=False)
@@ -568,6 +619,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command is None:
             return run_guided(args)
         return COMMANDS[args.command](args)
+    except NoSeatsError as error:
+        # A full bus is not a mistake by the traveller, so it is not called an error.
+        log.info("%s refused: %s", command, error)
+        print(f"Not booked: {error}")
+        return EXIT_ERROR
     except BusBidderError as error:
         log.error("%s failed: %s: %s", command, type(error).__name__, error)
         print(f"Error: {error}")

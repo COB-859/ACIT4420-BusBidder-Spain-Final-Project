@@ -95,7 +95,7 @@ class ConstraintTests(unittest.TestCase):
         offer = make_offer()
         self.assertEqual(len(run_filter([offer], seats={"SR-MAL-0001": 2}, passengers=2).accepted), 1)
         self.assert_removed(run_filter([offer], seats={"SR-MAL-0001": 1}, passengers=2),
-                            "seats", "1 seat(s) left, 2 needed")
+                            "seats", "1 seat left, 2 needed")
 
     def test_sold_out_departure_is_removed(self):
         self.assert_removed(run_filter([make_offer()], seats={"SR-MAL-0001": 0}), "seats", "sold out")
@@ -106,7 +106,7 @@ class ConstraintTests(unittest.TestCase):
     def test_transfers_boundary(self):
         self.assertEqual(len(run_filter([make_offer(transfers=1)], max_transfers=1).accepted), 1)
         self.assert_removed(run_filter([make_offer(transfers=2)], max_transfers=1),
-                            "transfers", "2 transfer(s), at most 1 allowed")
+                            "transfers", "2 transfers, at most 1 allowed")
 
     def test_duration_boundary(self):
         offer = make_offer()  # 6 hours
@@ -163,7 +163,7 @@ class FilterResultTests(unittest.TestCase):
 
 class DescribeTests(unittest.TestCase):
     def test_only_the_seat_condition_by_default(self):
-        self.assertEqual(describe_constraints(make_request()), ["at least 1 seat(s) left"])
+        self.assertEqual(describe_constraints(make_request()), ["at least 1 seat left"])
 
     def test_every_set_condition_is_listed(self):
         request = make_request(
@@ -172,9 +172,9 @@ class DescribeTests(unittest.TestCase):
             date_from=date(2027, 7, 12), date_to=date(2027, 7, 14),
         )
         self.assertEqual(describe_constraints(request), [
-            "at least 2 seat(s) left",
+            "at least 2 seats left",
             "price per person at most 50.00 EUR",
-            "at most 1 transfer(s)",
+            "at most 1 transfer",
             "journey at most 8h 00m",
             "ticket must be changeable",
             "ticket must be refundable",

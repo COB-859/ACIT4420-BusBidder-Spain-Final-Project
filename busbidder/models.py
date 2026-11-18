@@ -41,6 +41,11 @@ PAYMENT_REFUNDED = "refunded (simulated)"
 PAYMENT_NOT_REFUNDED = "not refunded (the fare is not refundable)"
 
 
+def count_of(number: int, word: str) -> str:
+    """Return a number with its noun, such as '1 seat' or '2 seats'."""
+    return f"{number} {word}" if number == 1 else f"{number} {word}s"
+
+
 def format_duration(minutes: int) -> str:
     """Return minutes as text such as 6h 05m."""
     return f"{minutes // 60}h {minutes % 60:02d}m"
@@ -336,11 +341,14 @@ class TravelRequest:
             raise InvalidRequestError(f"budget must be a number above 0: {self.budget:g}")
         for label, value in (
             ("maximum transfers", self.max_transfers),
-            ("maximum duration", self.max_duration_minutes),
             ("minimum luggage", self.min_luggage_kg),
         ):
             if value is not None and value < 0:
                 raise InvalidRequestError(f"{label} is negative: {value}")
+        if self.max_duration_minutes is not None and self.max_duration_minutes < 1:
+            raise InvalidRequestError(
+                f"longest journey must be at least 1 minute: {self.max_duration_minutes}"
+            )
 
 
 @dataclass(frozen=True)

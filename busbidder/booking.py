@@ -30,6 +30,7 @@ from busbidder.models import (
     Booking,
     Departure,
     Fare,
+    count_of,
 )
 from busbidder.validation import is_booking_reference
 
@@ -189,15 +190,28 @@ class BookingService:
             raise BookingError(f"passengers must be at least 1: {passengers}")
         fare = self._fares.get(offer_id.strip().upper())
         if fare is None:
-            raise BookingError(f"unknown offer: {offer_id!r}")
+            raise BookingError(
+                f"unknown offer: {offer_id!r}, so nothing was booked. "
+                "Use an offer ID from the search results, such as CL-MAL-0007-S."
+            )
         departure = self._departures[fare.departure_id]
         bookings = self._store.load()
         # Seats are counted again here, because another booking may have
         # been saved since the traveller saw the ranking.
         left = SeatLedger(self._departures, bookings).seats_left(departure.departure_id)
+        bus = (
+            f"{departure.company.name} bus to {departure.destination.name}, "
+            f"{departure.departure:%a %d %b %H:%M}"
+        )
+        if left == 0:
+            raise NoSeatsError(
+                f"this bus is sold out ({bus}). "
+                "Search again to see buses that still have seats."
+            )
         if left < passengers:
             raise NoSeatsError(
-                f"departure {departure.departure_id} has {left} seat(s) left, {passengers} requested"
+                f"this bus has only {count_of(left, 'seat')} left, but you asked for "
+                f"{passengers} ({bus}). Try fewer passengers or another bus."
             )
         moment = self._now()
         booking = Booking(
@@ -231,9 +245,15 @@ class BookingService:
         bookings = self._store.load()
         booking = next((saved for saved in bookings if saved.reference == wanted), None)
         if booking is None:
-            raise BookingNotFoundError(f"no booking with reference {wanted}")
+            raise BookingNotFoundError(
+                f"no booking found with the reference {wanted}. "
+                "The bookings command lists your references."
+            )
         if not booking.is_active:
-            raise BookingError(f"booking {wanted} is already cancelled")
+            raise BookingError(
+                f"booking {wanted} is already cancelled. "
+                f"Its refund was {booking.refund_amount or 0:.2f} EUR."
+            )
         # The refund follows the fare conditions stored with the booking,
         # not the data files, which may have changed since.
         refund = round(booking.total_price * booking.fare.refund_percent / 100, 2)

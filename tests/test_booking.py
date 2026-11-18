@@ -216,13 +216,22 @@ class BookingServiceTests(ServiceTestCase):
         self.assertEqual(self.service.seats_left("SR-MAL-0001"), 0)
         with self.assertRaises(NoSeatsError) as caught:
             self.service.book("SR-MAL-0001-B", 1)
-        self.assertIn("has 0 seat(s) left, 1 requested", str(caught.exception))
+        self.assertIn("this bus is sold out (SolRuta bus to Malaga, Mon 12 Jul 08:00)", str(caught.exception))
         self.assertEqual(len(self.store.load()), 1)
 
     def test_sold_out_departure_cannot_be_booked(self):
-        with self.assertRaises(NoSeatsError):
+        with self.assertRaises(NoSeatsError) as caught:
             self.service.book("SR-MAL-0002-B", 1)
+        self.assertIn("is sold out", str(caught.exception))
         self.assertEqual(self.store.load(), [])
+
+    def test_too_few_seats_says_how_many_are_left(self):
+        with self.assertRaises(NoSeatsError) as caught:
+            self.service.book("SR-MAL-0001-B", 4)
+        message = str(caught.exception)
+        self.assertIn("this bus has only 3 seats left, but you asked for 4", message)
+        self.assertIn("(SolRuta bus to Malaga, Mon 12 Jul 08:00). Try fewer passengers or another bus.", message)
+        self.assertNotIn("sold out", message)
 
     def test_seats_are_counted_from_the_saved_file_not_from_memory(self):
         self.service.book("SR-MAL-0001-B", 2)
@@ -315,7 +324,8 @@ class CancelTests(ServiceTestCase):
         self.service.cancel(booking.reference)
         with self.assertRaises(BookingError) as caught:
             self.service.cancel(booking.reference)
-        self.assertIn("already cancelled", str(caught.exception))
+        self.assertIn("is already cancelled", str(caught.exception))
+        self.assertIn("Its refund was 0.00 EUR", str(caught.exception))
 
     def test_unknown_reference_is_not_found(self):
         with self.assertRaises(BookingNotFoundError):

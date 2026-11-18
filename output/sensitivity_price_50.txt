@@ -1,10 +1,10 @@
-Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)
+Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger
 
 Mandatory conditions (an offer that fails one is removed before ranking):
   - destination Malaga, departure on 2027-07-12 to 2027-07-14 (these decide which offers are searched)
-  - at least 1 seat(s) left
+  - at least 1 seat left
   - price per person at most 50.00 EUR
-  - at most 1 transfer(s)
+  - at most 1 transfer
   - ticket must be changeable
 
 Preferences (scored from 0 to 100 and weighted; they never remove an offer):
@@ -21,21 +21,21 @@ Offers left to rank: 17
 Ranked offers, best first (value, points, weight, contribution)
 ------------------------------------------------------------------------
 #1  SR-MAL-0008-S  SolRuta, standard fare   TOTAL 63.75
-    Wed 14 Jul 15:45 -> 23:45 (8h 00m), 1 transfer(s), 46 seat(s) left, luggage 20 kg
+    Wed 14 Jul 15:45 -> 23:45 (8h 00m), 1 transfer, 46 seats left, luggage 20 kg
     Price       29.98 EUR                  100.0 pts x    50% =  50.00
     Duration    8h 00m                       0.0 pts x    20% =   0.00
     Departure   15:45                       37.5 pts x    10% =   3.75
     Flexibility changeable                  50.0 pts x    20% =  10.00
 
 #2  CL-MAL-0007-S  CostaLink, standard fare   TOTAL 63.24
-    Tue 13 Jul 08:30 -> 15:00 (6h 30m), direct, 44 seat(s) left, luggage 20 kg
+    Tue 13 Jul 08:30 -> 15:00 (6h 30m), direct, 44 seats left, luggage 20 kg
     Price       38.19 EUR                   58.8 pts x    50% =  29.39
     Duration    6h 30m                      69.2 pts x    20% =  13.85
     Departure   08:30                      100.0 pts x    10% =  10.00
     Flexibility changeable                  50.0 pts x    20% =  10.00
 
 #3  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 60.21
-    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seat(s) left, luggage 20 kg
+    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seats left, luggage 20 kg
     Price       43.38 EUR                   32.7 pts x    50% =  16.37
     Duration    6h 30m                      69.2 pts x    20% =  13.85
     Departure   10:15                      100.0 pts x    10% =  10.00
@@ -50,3 +50,7 @@ Why #1 ranks first:
   Its largest contributions come from price (29.98 EUR, 50.00 points).
   Remaining disadvantage: duration (8h 00m scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
+  Note: the first two offers are only 0.51 points apart, so a small change in the weights can change which one ranks first.
+
+Next step: to book an offer, use its offer ID. For the top offer:
+  python3 main.py book --offer SR-MAL-0008-S --passengers 1

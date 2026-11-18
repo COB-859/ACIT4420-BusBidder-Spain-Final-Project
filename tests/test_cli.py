@@ -92,7 +92,7 @@ class ValidateTests(CliTestCase):
         code, text = self.run_main("validate")
         self.assertEqual(code, EXIT_ERROR)
         self.assertIn("fares.csv, line 2: price must be above 0", text)
-        self.assertIn("Result: 1 row(s) of the main data files were rejected.", text)
+        self.assertIn("Result: 1 row of the main data files was rejected.", text)
         saved = (self.output_dir / "rejected_records.txt").read_text(encoding="utf-8")
         self.assertIn("fares.csv, line 2", saved)
 
@@ -197,8 +197,10 @@ class SearchTests(CliTestCase):
     def test_no_offer_left_is_reported_and_is_not_an_error(self):
         code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--budget", "5")
         self.assertEqual(code, EXIT_OK)
-        self.assertIn("No offer meets every mandatory condition", text)
+        self.assertIn("No buses match all your requirements.", text)
+        self.assertIn("5 of the 5 offers cost more than your budget of 5.00 EUR.", text)
         self.assertNotIn("#1", text)
+        self.assertNotIn("Next step", text)
 
     def test_dates_without_offers(self):
         arguments = ["--destination", "Malaga", "--date-from", "2027-08-01", "--date-to",
@@ -287,7 +289,7 @@ class CompareTests(CliTestCase):
         self.assertEqual(code, EXIT_OK)
         self.assertRegex(text, r"budget\s+SR-MAL-0001-B")
         self.assertRegex(text, r"flexible\s+CE-MAL-0001-F")
-        self.assertIn("The 2 profiles recommend 2 different offer(s).", text)
+        self.assertIn("The 2 profiles recommend 2 different offers.", text)
         self.assertIn("Profile 'flexible': Flexibility first", text)
 
     def test_chosen_profiles_only(self):
@@ -303,7 +305,8 @@ class CompareTests(CliTestCase):
     def test_nothing_to_compare_is_reported(self):
         code, text = self.run_main("compare", *MALAGA, "--budget", "5")
         self.assertEqual(code, EXIT_OK)
-        self.assertIn("No offer meets every mandatory condition", text)
+        self.assertIn("No buses match all your requirements.", text)
+        self.assertIn("The cheapest offer costs 25.00 EUR.", text)
         self.assertNotIn("Profile comparison", text)
 
 
@@ -314,16 +317,16 @@ class BookTests(CliTestCase):
         self.assertIn("BOOKING CONFIRMED", text)
         self.assertRegex(text, r"Reference:      BB-\d{8}-[A-HJ-NP-Z2-9]{6}")
         self.assertIn("Total price:    60.00 EUR", text)
-        self.assertIn("Seats left on departure SR-MAL-0001: 1", text)
+        self.assertIn("Seats left on this bus: 1", text)
         self.assertTrue((self.state_dir / "bookings.json").is_file())
 
     def test_a_booking_reduces_the_seats_shown_by_search_for_every_fare(self):
         _code, before = self.run_main("search", *MALAGA, "--profile", "budget")
-        self.assertIn("3 seat(s) left", before)
+        self.assertIn("3 seats left", before)
         self.run_main("book", "--offer", "SR-MAL-0001-S", "--passengers", "2")
         _code, after = self.run_main("search", *MALAGA, "--profile", "budget")
-        self.assertNotIn("3 seat(s) left", after)
-        self.assertEqual(after.count("direct, 1 seat(s) left") + after.count("1 transfer(s), 1 seat(s) left"), 2)
+        self.assertNotIn("3 seats left", after)
+        self.assertEqual(after.count("direct, 1 seat left") + after.count("1 transfer, 1 seat left"), 2)
 
     def test_departure_filled_by_bookings_disappears_from_search(self):
         self.run_main("book", "--offer", "SR-MAL-0001-B", "--passengers", "3")
@@ -335,7 +338,7 @@ class BookTests(CliTestCase):
     def test_booking_more_than_the_seats_left_is_an_error(self):
         code, text = self.run_main("book", "--offer", "SR-MAL-0001-B", "--passengers", "4")
         self.assertEqual(code, EXIT_ERROR)
-        self.assertIn("has 3 seat(s) left, 4 requested", text)
+        self.assertIn("Not booked: this bus has only 3 seats left, but you asked for 4 (SolRuta bus to Malaga, Mon 12 Jul 08:00)", text)
         self.assertFalse((self.state_dir / "bookings.json").exists())
 
     def test_unknown_offer_is_an_error(self):
@@ -345,7 +348,7 @@ class BookTests(CliTestCase):
 
     def test_bookings_lists_what_was_booked(self):
         code, text = self.run_main("bookings")
-        self.assertEqual((code, text.strip()), (EXIT_OK, "No bookings saved."))
+        self.assertEqual((code, text.strip()), (EXIT_OK, "You have no bookings yet. Search for a bus, then use the book command."))
         self.run_main("book", "--offer", "CE-MAL-0001-F")
         code, text = self.run_main("bookings")
         self.assertIn("CE-MAL-0001-F", text)
@@ -415,7 +418,7 @@ class GuidedTests(CliTestCase):
         self.assertIn("BOOKING CONFIRMED", text)
         self.assertIn("Offer:          SR-MAL-0001-S", text)
         self.assertRegex(text, BOOKING_REFERENCE_PATTERN.pattern.strip("^$"))
-        self.assertIn("Seats left on departure SR-MAL-0001: 2", text)
+        self.assertIn("Seats left on this bus: 2", text)
 
     def test_guided_booking_takes_the_rank_the_traveller_chose(self):
         code, text = self.run_guided([*self.ANSWERS, "2", "y"])
@@ -455,7 +458,7 @@ class GuidedTests(CliTestCase):
                    "", "0", "360", "", "y", "20", "budget", ""]
         code, text = self.run_guided(answers)
         self.assertEqual(code, EXIT_OK)
-        for condition in ("at most 0 transfer(s)", "journey at most 6h 00m",
+        for condition in ("at most 0 transfers", "journey at most 6h 00m",
                           "ticket must be refundable", "luggage allowance at least 20 kg"):
             self.assertIn(f"  - {condition}", text)
         self.assertIn("#1  CE-MAL-0001-F", text)
@@ -494,7 +497,7 @@ class GuidedTests(CliTestCase):
         ):
             with self.subTest(message=message):
                 self.assertIn(message, text)
-        self.assertIn("2 passenger(s)", text)
+        self.assertIn("2 passengers", text)
         self.assertIn("Nothing booked.", text)
 
     def test_custom_weights_can_be_typed(self):
@@ -508,14 +511,15 @@ class GuidedTests(CliTestCase):
         answers = ["Malaga", "2027-07-12", "2027-07-14", "", "morning", "5", "", "", "", "", "", "budget"]
         code, text = self.run_guided(answers)
         self.assertEqual(code, EXIT_OK)
-        self.assertIn("No offer meets every mandatory condition", text)
+        self.assertIn("No buses match all your requirements.", text)
+        self.assertIn("Nothing to book. Start again with other dates or fewer requirements.", text)
         self.assertNotIn("Rank number", text)
 
     def test_end_of_input_stops_quietly(self):
         with mock.patch("builtins.input", side_effect=EOFError):
             code, text = self.run_main()
         self.assertEqual(code, EXIT_OK)
-        self.assertIn("Stopped.", text)
+        self.assertIn("Stopped. Nothing was booked.", text)
 
 
 class CancelCommandTests(CliTestCase):
@@ -531,9 +535,29 @@ class CancelCommandTests(CliTestCase):
         code, text = self.run_main("cancel", "--ref", reference)
         self.assertEqual(code, EXIT_OK)
         self.assertIn("BOOKING CANCELLED", text)
-        self.assertIn("Refund:         108.00 EUR (simulated)", text)
+        self.assertIn(f"Booking {reference} is cancelled: 2 flex seats to Malaga.", text)
+        self.assertIn("Refund: 108.00 EUR (90% of the 120.00 EUR paid).", text)
         self.assertIn("Payment:        refunded (simulated)", text)
-        self.assertIn("Seats left on departure CE-MAL-0001: 20", text)
+        self.assertIn("Seats left on this bus: 20", text)
+
+    def test_cancel_of_a_non_refundable_fare_says_why_there_is_no_refund(self):
+        reference = self.book("SR-MAL-0001-B")
+        code, text = self.run_main("cancel", "--ref", reference)
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn(f"Booking {reference} is cancelled: 1 basic seat to Malaga.", text)
+        self.assertIn("No refund, because basic tickets are not refundable.", text)
+
+    def test_sold_out_booking_says_sold_out(self):
+        self.book("SR-MAL-0001-B", "3")
+        code, text = self.run_main("book", "--offer", "SR-MAL-0001-S", "--passengers", "1")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Not booked: this bus is sold out (SolRuta bus to Malaga, Mon 12 Jul 08:00)", text)
+
+    def test_booking_list_shows_the_refund(self):
+        reference = self.book("CE-MAL-0001-F", "2")
+        self.run_main("cancel", "--ref", reference)
+        _code, text = self.run_main("bookings")
+        self.assertRegex(text, rf"{reference}.*cancelled\s+108\.00 EUR")
 
     def test_cancelled_booking_stays_in_the_list(self):
         reference = self.book("SR-MAL-0001-B")
@@ -553,8 +577,8 @@ class CancelCommandTests(CliTestCase):
         reference = self.book("SR-MAL-0001-B")
         self.run_main("cancel", "--ref", reference)
         for ref, message in (
-            (reference, "already cancelled"),
-            ("BB-20261120-ZZZZZZ", "no booking with reference"),
+            (reference, "is already cancelled. Its refund was 0.00 EUR."),
+            ("BB-20261120-ZZZZZZ", "no booking found with the reference BB-20261120-ZZZZZZ"),
             ("nonsense", "must look like"),
         ):
             with self.subTest(ref=ref):

@@ -15,7 +15,7 @@ from busbidder.display import (
     format_when,
 )
 from busbidder.ranking import check_weights, rank_offers
-from tests.helpers import make_departure, make_offer, make_request
+from tests.helpers import make_departure, make_fare, make_offer, make_request
 from tests.test_booking import make_booking
 from tests.test_ranking import SPEC_WEIGHTS, three_offers
 
@@ -30,12 +30,12 @@ def text_of(lines) -> str:
 class RequestTextTests(unittest.TestCase):
     def test_request_lists_the_mandatory_conditions(self):
         text = text_of(format_request(REQUEST))
-        self.assertIn("Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger(s)", text)
+        self.assertIn("Journey: Madrid to Malaga, 2027-07-12 to 2027-07-14, 1 passenger", text)
         self.assertIn("Mandatory conditions", text)
         self.assertIn("  - destination Malaga, departure on 2027-07-12 to 2027-07-14 "
                       "(these decide which offers are searched)", text)
         self.assertIn("  - price per person at most 50.00 EUR", text)
-        self.assertIn("  - at most 1 transfer(s)", text)
+        self.assertIn("  - at most 1 transfer", text)
 
     def test_preferences_are_shown_apart_from_the_conditions(self):
         text = text_of(format_preferences(REQUEST, SPEC_WEIGHTS, "profile 'budget'"))
@@ -70,15 +70,18 @@ class FilterTextTests(unittest.TestCase):
     def test_everything_removed_names_the_strictest_condition(self):
         result = filter_offers(three_offers(), make_request(budget=10), SEATS)
         text = text_of(format_filter(result))
-        self.assertIn("No offer meets every mandatory condition", text)
-        self.assertIn("'budget' (3)", text)
+        self.assertIn("No buses match all your requirements.", text)
+        self.assertIn("3 of the 3 offers fail the condition 'budget'.", text)
+        advised = text_of(format_filter(result, make_request(budget=10)))
+        self.assertIn("3 of the 3 offers cost more than your budget of 10.00 EUR.", advised)
+        self.assertIn("The cheapest offer costs", advised)
 
     def test_removed_offers_are_listed_with_every_reason(self):
         offers = [make_offer("B", serial=1, price=60, transfers=2)]
         result = filter_offers(offers, REQUEST, SEATS)
         text = text_of(format_removed(result))
         self.assertIn("SR-MAL-0001-B: price 60.00 EUR is above the budget of 50.00 EUR; "
-                      "2 transfer(s), at most 1 allowed", text)
+                      "2 transfers, at most 1 allowed", text)
 
 
 class RankingTextTests(unittest.TestCase):
@@ -89,7 +92,7 @@ class RankingTextTests(unittest.TestCase):
     def test_each_offer_shows_value_points_weight_contribution_and_total(self):
         text = text_of(format_ranking(self.ranked, self.weights, SEATS, top=0))
         self.assertIn("#1  SR-MAL-0002-S  SolRuta, standard fare   TOTAL 70.00", text)
-        self.assertIn("Mon 12 Jul 10:00 -> 15:00 (5h 00m), direct, 5 seat(s) left", text)
+        self.assertIn("Mon 12 Jul 10:00 -> 15:00 (5h 00m), direct, 5 seats left", text)
         self.assertRegex(text, r"Price\s+40\.00 EUR\s+50\.0 pts x\s+40% =\s+20\.00")
         self.assertRegex(text, r"Flexibility\s+changeable\s+50\.0 pts x\s+20% =\s+10\.00")
         self.assertIn("#3  SR-MAL-0003-F", text)
@@ -133,7 +136,7 @@ class ComparisonTextTests(unittest.TestCase):
         text = text_of(format_comparison(results, SEATS))
         self.assertRegex(text, r"cheap\s+SR-MAL-0001-B")
         self.assertRegex(text, r"flexible\s+SR-MAL-0003-F")
-        self.assertIn("The 2 profiles recommend 2 different offer(s).", text)
+        self.assertIn("The 2 profiles recommend 2 different offers.", text)
         self.assertIn("Profile 'cheap': cheap traveller", text)
         self.assertIn("Weights: Price 70%, Duration 10%, Departure 10%, Flexibility 10%", text)
         self.assertIn("next: #2", text)
@@ -144,6 +147,7 @@ class BookingTextTests(unittest.TestCase):
         booking = make_booking(letter="S", passengers=2)
         text = text_of(format_confirmation(booking))
         self.assertIn("BOOKING CONFIRMED", text)
+        self.assertIn("Booking confirmed: 2 standard seats to Malaga for 60.00 EUR.", text)
         self.assertIn("Reference:      BB-20261120-AAAAAA", text)
         self.assertIn("Journey:        Madrid to Malaga with SolRuta", text)
         self.assertIn("Departure:      Mon 12 Jul 2027 08:00", text)
@@ -158,10 +162,24 @@ class BookingTextTests(unittest.TestCase):
         self.assertNotIn("Refund:", text)
 
     def test_booking_list(self):
-        self.assertEqual(format_bookings([]), ["No bookings saved."])
+        self.assertEqual(format_bookings([]), ["You have no bookings yet. Search for a bus, then use the book command."])
         text = text_of(format_bookings([make_booking(), make_booking("BB-20261120-BBBBBB", status="cancelled")]))
-        self.assertRegex(text, r"BB-20261120-AAAAAA\s+SR-MAL-0001-B\s+Mon 12 Jul 08:00\s+1\s+30\.00 EUR\s+confirmed")
+        self.assertRegex(text, r"(?m)BB-20261120-AAAAAA\s+SR-MAL-0001-B\s+Mon 12 Jul 08:00\s+1\s+30\.00 EUR\s+confirmed$")
         self.assertRegex(text, r"BB-20261120-BBBBBB.*cancelled")
+
+    def test_cancellation_states_the_outcome_first(self):
+        refunded = make_booking(letter="F", passengers=2, status="cancelled")
+        refunded.fare = make_fare(letter="F", refundable=True, refund_percent=90)
+        refunded.refund_amount = 54.0
+        lines = format_confirmation(refunded)
+        self.assertEqual(lines[3], "Booking BB-20261120-AAAAAA is cancelled: 2 flex seats to Malaga.")
+        self.assertEqual(lines[4], "Refund: 54.00 EUR (90% of the 60.00 EUR paid).")
+
+        not_refunded = make_booking(status="cancelled")
+        not_refunded.refund_amount = 0.0
+        text = text_of(format_confirmation(not_refunded))
+        self.assertIn("No refund, because basic tickets are not refundable.", text)
+        self.assertNotIn("Refund:", text)
 
 
 if __name__ == "__main__":

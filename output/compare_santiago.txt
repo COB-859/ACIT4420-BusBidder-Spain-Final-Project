@@ -1,8 +1,8 @@
-Journey: Madrid to Santiago de Compostela, 2027-07-10 to 2027-07-16, 2 passenger(s)
+Journey: Madrid to Santiago de Compostela, 2027-07-10 to 2027-07-16, 2 passengers
 
 Mandatory conditions (an offer that fails one is removed before ranking):
   - destination Santiago de Compostela, departure on 2027-07-10 to 2027-07-16 (these decide which offers are searched)
-  - at least 2 seat(s) left
+  - at least 2 seats left
   - price per person at most 60.00 EUR
 
 Preferred departure: night (22:00 to 06:00)
@@ -21,14 +21,14 @@ business  CE-SCO-0011-S  Camino Express  Thu 15 Jul 06:30    58.02 EUR 6h 25m   
 flexible  VB-SCO-0005-S  VerdeBus        Wed 14 Jul 09:00    47.12 EUR 7h 45m   standard   73.68
 eco       VB-SCO-0006-S  VerdeBus        Thu 15 Jul 09:15    49.86 EUR 7h 20m   standard   76.15
 
-The 4 profiles recommend 4 different offer(s).
+The 4 profiles recommend 4 different offers.
 
 ------------------------------------------------------------------------
 Profile 'budget': Budget traveller: the price matters most
 Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
 ------------------------------------------------------------------------
 #1  NV-SCO-0004-B  NocheVia, basic fare   TOTAL 79.61
-    Tue 13 Jul 23:45 -> Wed 14 Jul 07:25 (7h 40m), direct, 39 seat(s) left, luggage 10 kg
+    Tue 13 Jul 23:45 -> Wed 14 Jul 07:25 (7h 40m), direct, 39 seats left, luggage 10 kg
     Price       29.13 EUR                   92.2 pts x    55% =  50.69
     Duration    7h 40m                      59.5 pts x    15% =   8.92
     Departure   23:45                      100.0 pts x    10% =  10.00
@@ -48,7 +48,7 @@ Profile 'business': Business traveller: a short journey at the right time of day
 Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
 ------------------------------------------------------------------------
 #1  CE-SCO-0011-S  Camino Express, standard fare   TOTAL 80.57
-    Thu 15 Jul 06:30 -> 12:55 (6h 25m), direct, 47 seat(s) left, luggage 20 kg
+    Thu 15 Jul 06:30 -> 12:55 (6h 25m), direct, 47 seats left, luggage 20 kg
     Price       58.02 EUR                    5.7 pts x    10% =   0.57
     Duration    6h 25m                     100.0 pts x    35% =  35.00
     Departure   06:30                       91.7 pts x    30% =  27.50
@@ -68,7 +68,7 @@ Profile 'flexible': Flexibility-focused tourist: a ticket that can be changed or
 Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
 ------------------------------------------------------------------------
 #1  VB-SCO-0005-S  VerdeBus, standard fare   TOTAL 73.68
-    Wed 14 Jul 09:00 -> 16:45 (7h 45m), direct, 6 seat(s) left, luggage 20 kg
+    Wed 14 Jul 09:00 -> 16:45 (7h 45m), direct, 6 seats left, luggage 20 kg
     Price       47.12 EUR                   38.3 pts x    20% =   7.67
     Duration    7h 45m                      56.8 pts x    15% =   8.51
     Departure   09:00                       50.0 pts x    15% =   7.50
@@ -81,13 +81,14 @@ Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
   Its largest contributions come from flexibility (changeable + refundable, 50.00 points).
   Remaining disadvantage: price (47.12 EUR scores 38.3 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
+  Note: the first two offers are only 0.23 points apart, so a small change in the weights can change which one ranks first.
 
 ------------------------------------------------------------------------
 Profile 'eco': Environment-focused traveller: low emissions per passenger
 Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
 ------------------------------------------------------------------------
 #1  VB-SCO-0006-S  VerdeBus, standard fare   TOTAL 76.15
-    Thu 15 Jul 09:15 -> 16:35 (7h 20m), direct, 19 seat(s) left, luggage 20 kg
+    Thu 15 Jul 09:15 -> 16:35 (7h 20m), direct, 19 seats left, luggage 20 kg
     Price       49.86 EUR                   30.2 pts x    20% =   6.03
     Duration    7h 20m                      70.3 pts x    15% =  10.54
     Departure   09:15                       45.8 pts x    10% =   4.58
@@ -101,3 +102,5 @@ Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
   Its largest contributions come from emissions (9.9 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
   Remaining disadvantage: price (49.86 EUR scores 30.2 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
+
+Next step: to see the full ranking for one profile, use the search command with --profile. To book, use the book command with an offer ID.

@@ -34,7 +34,8 @@ def parse_weights(text: str) -> dict[str, float]:
         if name in weights:
             raise WeightError(f"weight given twice: {name}")
         try:
-            weights[name] = float(number)
+            # "40%" means the same as "40": weights are percentages.
+            weights[name] = float(number.strip().removesuffix("%"))
         except ValueError:
             raise WeightError(f"weight for {name} is not a number: {number.strip()!r}") from None
     return weights
@@ -110,6 +111,19 @@ def require_intended_dominance(weights: Mapping[str, float], intended: bool) -> 
     problem = describe_dominance(weights)
     if problem is not None and not intended:
         raise WeightError(f"{problem}. If that is intended, add --allow-dominant")
+
+
+# When the first two offers are closer than this, the traveller is told
+# that the recommendation is not stable.
+NEAR_TIE_POINTS = 1.0
+
+
+def near_tie_gap(ranked: Sequence[ScoredOffer]) -> float | None:
+    """Return the gap between the first two totals when it is above 0 and below the limit."""
+    if len(ranked) < 2:
+        return None
+    gap = round(ranked[0].total - ranked[1].total, 2)
+    return gap if 0 < gap < NEAR_TIE_POINTS else None
 
 
 @dataclass(frozen=True)

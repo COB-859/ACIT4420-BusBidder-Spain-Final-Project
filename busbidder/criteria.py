@@ -12,7 +12,7 @@ import statistics
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from busbidder.models import Offer, TravelRequest, format_duration
+from busbidder.models import Offer, TravelRequest, count_of, format_duration
 from busbidder.validation import RATING_MAX, RATING_MIN
 
 MAX_POINTS = 100.0
@@ -136,7 +136,7 @@ def transfers_score(offers: Sequence[Offer], request: TravelRequest) -> list[Sco
     scores = []
     for offer in offers:
         transfers = offer.departure.transfers
-        value = "direct" if transfers == 0 else f"{transfers} transfer(s)"
+        value = "direct" if transfers == 0 else count_of(transfers, "transfer")
         scores.append(Score(TRANSFER_POINTS.get(transfers, 0.0), value))
     return scores
 
