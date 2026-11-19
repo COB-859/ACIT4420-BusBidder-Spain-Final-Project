@@ -26,8 +26,9 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# The modules that hold the rules of the program.
-MODULES = ["booking", "constraints", "criteria", "explain", "loader", "models", "ranking", "validation"]
+# Every module of the program except the two that hold no rule (exceptions, logsetup).
+MODULES = ["booking", "cli", "constraints", "criteria", "display", "explain", "loader", "models", "ranking",
+           "validation"]
 TARGET = 150
 # (text to find, replacement). Spaces keep "->" and "<=" apart from "<" and ">".
 CHANGES = [
@@ -118,7 +119,7 @@ def main() -> int:
 
     total, total_caught = sum(injected.values()), sum(caught.values())
     print(f"Faults injected: one change at a time, every {step}th of {len(every)} possible changes "
-          f"in {len(MODULES)} modules.")
+          f"in {len(MODULES)} of the 12 modules.")
     print(f"\n{'Module':<14}{'Injected':>9}{'Caught':>8}{'Survived':>10}")
     for module in MODULES:
         made = injected.get(module, 0)
