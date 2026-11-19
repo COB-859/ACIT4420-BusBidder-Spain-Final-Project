@@ -5,13 +5,17 @@ tests. The changes below were not noticed by any test, so each test here
 sits exactly on the limit that the change would move.
 """
 
+import contextlib
+import io
 import tempfile
 import unittest
 from dataclasses import replace
 from datetime import time
 from pathlib import Path
+from unittest import mock
 
 from busbidder.booking import BookingStore
+from busbidder.cli import EXIT_OK, main
 from busbidder.criteria import transfers_score
 from busbidder.explain import DISADVANTAGE_BELOW_POINTS, explain_top
 from busbidder.loader import write_rejected
@@ -19,6 +23,7 @@ from busbidder.models import TimeBand
 from busbidder.ranking import check_weights, near_tie_gap, rank_offers
 from tests.helpers import make_departure, make_offer, make_request
 from tests.test_booking import make_booking
+from tests.test_cli import MALAGA, CliTestCase
 from tests.test_ranking import SPEC_WEIGHTS, three_offers
 
 REQUEST = make_request()
@@ -117,6 +122,54 @@ class NewFolderTests(unittest.TestCase):
     def test_rejected_rows_are_written_two_new_folders_deep(self):
         write_rejected([], self.deep / "rejected_records.txt")
         self.assertIn("Rejected rows: 0", (self.deep / "rejected_records.txt").read_text(encoding="utf-8"))
+
+
+class LockEdgeTests(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.folder = Path(temp.name)
+
+    def test_the_lock_can_be_taken_two_new_folders_deep(self):
+        store = BookingStore(self.folder / "one" / "two" / "bookings.json")
+        with store.locked():
+            self.assertTrue(store.lock_path.exists())
+
+    def test_a_lock_that_is_already_gone_is_not_an_error(self):
+        store = BookingStore(self.folder / "bookings.json")
+        with store.locked():
+            store.lock_path.unlink()
+        self.assertFalse(store.lock_path.exists())
+
+
+class GuidedSingleDayTests(CliTestCase):
+    def test_the_last_travel_day_may_be_the_first(self):
+        answers = ["Malaga", "2027-07-12", "2027-07-12", "", "morning", "", "", "", "", "", "", "budget", ""]
+        with mock.patch("builtins.input", side_effect=answers):
+            code, text = self.run_main()
+        self.assertEqual(code, EXIT_OK)
+        self.assertNotIn("before the first travel date", text)
+        self.assertIn("Journey: Madrid to Malaga, 2027-07-12 to 2027-07-12", text)
+
+
+class RequiredOptionTests(CliTestCase):
+    def run_usage_error(self, *arguments: str) -> tuple[int, str]:
+        """Run a command the parser refuses; return its exit code and message."""
+        message = io.StringIO()
+        with contextlib.redirect_stderr(message), contextlib.redirect_stdout(io.StringIO()), \
+                self.assertRaises(SystemExit) as caught:
+            main(list(arguments))
+        return caught.exception.code, message.getvalue()
+
+    def test_destination_and_departure_must_be_given(self):
+        complete = dict(zip(MALAGA[::2], MALAGA[1::2]))
+        for missing in ("--destination", "--depart"):
+            with self.subTest(missing=missing):
+                arguments = [part for option, value in complete.items() if option != missing
+                             for part in (option, value)]
+                code, text = self.run_usage_error("search", *arguments, "--profile", "budget")
+                self.assertEqual(code, 2)
+                self.assertIn(f"the following arguments are required: {missing}", text)
 
 
 if __name__ == "__main__":

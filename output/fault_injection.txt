@@ -1,8 +1,8 @@
 Faults injected: one change at a time, every 3th of 333 possible changes in 10 of the 12 modules.
 
 Module         Injected  Caught  Survived
-booking              10       7         3
-cli                  22      19         3
+booking              10       8         2
+cli                  22      22         0
 constraints          15      15         0
 criteria              5       5         0
 display               8       8         0
@@ -11,29 +11,17 @@ loader                6       6         0
 models               25      24         1
 ranking               7       7         0
 validation            8       8         0
-Total               111     104         7
+Total               111     108         3
 
-The tests caught 104 of 111 injected faults (94 percent).
+The tests caught 108 of 111 injected faults (97 percent).
 
 Survivors (a change no test noticed):
-  busbidder/booking.py:83
-      was:  self.path.parent.mkdir(parents=True, exist_ok=True)
-      made: self.path.parent.mkdir(parents=False, exist_ok=True)
   busbidder/booking.py:108
       was:  return time.time() - self.lock_path.stat().st_mtime > LOCK_STALE_SECONDS
       made: return time.time() - self.lock_path.stat().st_mtime >= LOCK_STALE_SECONDS
   busbidder/booking.py:114
       was:  self.lock_path.unlink(missing_ok=True)
       made: self.lock_path.unlink(missing_ok=False)
-  busbidder/cli.py:405
-      was:  if day < first_day:
-      made: if day <= first_day:
-  busbidder/cli.py:573
-      was:  parser.add_argument("--destination", required=True, help="city name or code, for example Malaga")
-      made: parser.add_argument("--destination", required=False, help="city name or code, for example Malaga")
-  busbidder/cli.py:576
-      was:  parser.add_argument("--depart", required=True,
-      made: parser.add_argument("--depart", required=False,
   busbidder/models.py:256
       was:  inside = moment >= start or moment <= end
       made: inside = moment >= start or moment < end
