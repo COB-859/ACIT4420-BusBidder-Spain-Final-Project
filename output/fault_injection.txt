@@ -1,8 +1,8 @@
-Faults injected: one change at a time, each of the 347 possible changes in 10 of the 12 modules.
+Faults injected: one change at a time, each of the 348 possible changes in 10 of the 12 modules.
 
 Module         Injected  Caught  Survived
 booking              39      34         5
-cli                  69      65         4
+cli                  70      66         4
 constraints          46      46         0
 criteria             16      16         0
 display              23      23         0
@@ -11,9 +11,9 @@ loader               18      18         0
 models               74      70         4
 ranking              21      19         2
 validation           26      26         0
-Total               347     332        15
+Total               348     333        15
 
-The tests caught 332 of 347 injected faults (96 percent).
+The tests caught 333 of 348 injected faults (96 percent).
 
 Survivors (a change no test noticed):
   busbidder/booking.py:93
