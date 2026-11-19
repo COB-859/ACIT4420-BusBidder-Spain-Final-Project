@@ -200,6 +200,12 @@ class ChangeCommandTests(CliTestCase):
         self.assertRegex(text, rf"{reference}\s+CE-MAL-0001-F")
         self.assertIn("To change or cancel a confirmed booking", text)
 
+    def test_changing_does_not_need_the_profiles_file(self):
+        reference = self.book("CE-MAL-0001-S")
+        (self.data_dir / "profiles.json").write_text("{broken", encoding="utf-8")
+        code, _text = self.run_main("change", "--ref", reference, "--offer", "CE-MAL-0001-F")
+        self.assertEqual(code, EXIT_OK)
+
     def test_change_needs_a_reference_and_an_offer(self):
         from tests.test_boundaries import RequiredOptionTests
         reference = self.book("CE-MAL-0001-S")

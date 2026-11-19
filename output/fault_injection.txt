@@ -1,81 +1,48 @@
-Faults injected: one change at a time, each of the 333 possible changes in 10 of the 12 modules.
+Faults injected: one change at a time, each of the 347 possible changes in 10 of the 12 modules.
 
 Module         Injected  Caught  Survived
-booking              29      23         6
-cli                  65      53        12
+booking              39      34         5
+cli                  69      65         4
 constraints          46      46         0
 criteria             16      16         0
-display              23      22         1
+display              23      23         0
 explain              15      15         0
 loader               18      18         0
-models               74      69         5
+models               74      70         4
 ranking              21      19         2
 validation           26      26         0
-Total               333     307        26
+Total               347     332        15
 
-The tests caught 307 of 333 injected faults (92 percent).
+The tests caught 332 of 347 injected faults (96 percent).
 
 Survivors (a change no test noticed):
-  busbidder/booking.py:91
+  busbidder/booking.py:93
       was:  if time.monotonic() >= deadline:
       made: if time.monotonic() > deadline:
-  busbidder/booking.py:108
+  busbidder/booking.py:110
       was:  return time.time() - self.lock_path.stat().st_mtime > LOCK_STALE_SECONDS
       made: return time.time() - self.lock_path.stat().st_mtime >= LOCK_STALE_SECONDS
-  busbidder/booking.py:110
+  busbidder/booking.py:112
       was:  return False        # the lock has just gone, so try again
       made: return True        # the lock has just gone, so try again
-  busbidder/booking.py:114
+  busbidder/booking.py:116
       was:  self.lock_path.unlink(missing_ok=True)
       made: self.lock_path.unlink(missing_ok=False)
-  busbidder/booking.py:175
+  busbidder/booking.py:177
       was:  temporary.unlink(missing_ok=True)
       made: temporary.unlink(missing_ok=False)
-  busbidder/booking.py:202
-      was:  if booked > seats:
-      made: if booked >= seats:
-  busbidder/cli.py:124
+  busbidder/cli.py:126
       was:  changeable: bool = False,
       made: changeable: bool = True,
-  busbidder/cli.py:125
+  busbidder/cli.py:127
       was:  refundable: bool = False,
       made: refundable: bool = True,
-  busbidder/cli.py:182
-      was:  save.parent.mkdir(parents=True, exist_ok=True)
-      made: save.parent.mkdir(parents=False, exist_ok=True)
-  busbidder/cli.py:185
+  busbidder/cli.py:187
       was:  reason = error.strerror or str(error)
       made: reason = error.strerror and str(error)
-  busbidder/cli.py:248
-      was:  show_removed: bool = False,
-      made: show_removed: bool = True,
-  busbidder/cli.py:314
+  busbidder/cli.py:316
       was:  or "none",
       made: and "none",
-  busbidder/cli.py:537
-      was:  if minimum is not None and number < minimum:
-      made: if minimum is not None and number <= minimum:
-  busbidder/cli.py:574
-      was:  parser.add_argument("--date-from", required=True, help="first travel date, for example 2027-07-12")
-      made: parser.add_argument("--date-from", required=False, help="first travel date, for example 2027-07-12")
-  busbidder/cli.py:575
-      was:  parser.add_argument("--date-to", required=True, help="last travel date, for example 2027-07-14")
-      made: parser.add_argument("--date-to", required=False, help="last travel date, for example 2027-07-14")
-  busbidder/cli.py:598
-      was:  _add_folder_options(parser, top_level=True)
-      made: _add_folder_options(parser, top_level=False)
-  busbidder/cli.py:623
-      was:  book.add_argument("--offer", required=True, help="offer ID from a ranking, for example SR-MAL-0001-B")
-      made: book.add_argument("--offer", required=False, help="offer ID from a ranking, for example SR-MAL-0001-B")
-  busbidder/cli.py:631
-      was:  cancel.add_argument("--ref", required=True, help="booking reference, for example BB-20261120-7K3QX9")
-      made: cancel.add_argument("--ref", required=False, help="booking reference, for example BB-20261120-7K3QX9")
-  busbidder/display.py:263
-      was:  arrival_format = "%H:%M" if booking.arrival.date() == booking.departure.date() else DAY_FORMAT
-      made: arrival_format = "%H:%M" if booking.arrival.date() != booking.departure.date() else DAY_FORMAT
-  busbidder/models.py:178
-      was:  if self.luggage_kg < 0:
-      made: if self.luggage_kg <= 0:
   busbidder/models.py:254
       was:  inside = start <= moment <= end
       made: inside = start < moment <= end
