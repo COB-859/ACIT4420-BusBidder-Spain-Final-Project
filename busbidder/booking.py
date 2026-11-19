@@ -15,6 +15,7 @@ import time
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from busbidder.exceptions import (
     DataFileError,
     InvalidRecordError,
     NoSeatsError,
+    NotChangeableError,
 )
 from busbidder.models import (
     PAYMENT_NOT_REFUNDED,
@@ -216,13 +218,28 @@ class SeatLedger:
         return {departure_id: self.seats_left(departure_id) for departure_id in self._departures}
 
 
+@dataclass(frozen=True)
+class Change:
+    """What a change of booking did and what it costs."""
+
+    booking: Booking
+    old_offer_id: str
+    fee: float
+    price_difference: float
+
+    @property
+    def to_pay(self) -> float:
+        """The fee plus the higher price of the new ticket."""
+        return round(self.fee + self.price_difference, 2)
+
+
 def random_code() -> str:
     """Return six random characters for a booking reference."""
     return "".join(secrets.choice(REFERENCE_ALPHABET) for _ in range(REFERENCE_CODE_LENGTH))
 
 
 class BookingService:
-    """Makes, lists and cancels simulated bookings.
+    """Makes, lists, changes and cancels simulated bookings.
 
     The clock and the code generator can be replaced, so tests can fix the
     date and force two bookings to draw the same code.
@@ -309,17 +326,10 @@ class BookingService:
         The booking is kept with the status cancelled, so its reference is
         never given out again.
         """
-        wanted = reference.strip().upper()
-        if not is_booking_reference(wanted):
-            raise BookingError(f"booking reference must look like BB-20261120-7K3QX9: {reference!r}")
+        wanted = self._wanted(reference)
         with self._store.locked():
             bookings = self._store.load()
-            booking = next((saved for saved in bookings if saved.reference == wanted), None)
-            if booking is None:
-                raise BookingNotFoundError(
-                    f"no booking found with the reference {wanted}. "
-                    "The bookings command lists your references."
-                )
+            booking = self._find(bookings, wanted)
             if not booking.is_active:
                 raise BookingError(
                     f"booking {wanted} is already cancelled. "
@@ -336,6 +346,88 @@ class BookingService:
             "Cancelled %s: %d seat(s) freed on %s, refund %.2f EUR",
             wanted, booking.passengers, booking.departure_id, refund,
         )
+        return booking
+
+    def change(self, reference: str, offer_id: str) -> Change:
+        """Move a booking to another bus or fare of the same company and destination.
+
+        Whether the ticket can be changed, and the fee, follow the fare
+        conditions stored with the booking. The traveller pays the fee per
+        passenger and the difference when the new ticket costs more. A
+        cheaper ticket gives no money back. The reference stays the same.
+        """
+        wanted = self._wanted(reference)
+        new_fare = self._fares.get(offer_id.strip().upper())
+        if new_fare is None:
+            raise BookingError(
+                f"unknown offer: {offer_id!r}, so nothing was changed. "
+                "Use an offer ID from the search results, such as CL-MAL-0007-S."
+            )
+        new_departure = self._departures[new_fare.departure_id]
+        with self._store.locked():
+            bookings = self._store.load()
+            booking = self._find(bookings, wanted)
+            if not booking.is_active:
+                raise BookingError(f"booking {wanted} is cancelled, so it cannot be changed.")
+            old_fare = booking.fare
+            if not old_fare.changeable:
+                raise NotChangeableError(
+                    f"this {old_fare.fare_type} ticket cannot be changed. "
+                    "You can cancel it with the cancel command and book another bus."
+                )
+            if new_fare.offer_id == old_fare.offer_id:
+                raise BookingError(f"booking {wanted} is already for offer {old_fare.offer_id}.")
+            if (new_departure.company.name != booking.company_name
+                    or new_departure.destination.name != booking.destination_name):
+                raise NotChangeableError(
+                    f"a ticket can only be changed to another {booking.company_name} bus to "
+                    f"{booking.destination_name}. Offer {new_fare.offer_id} is "
+                    f"{new_departure.company.name} to {new_departure.destination.name}."
+                )
+            # The seats this booking holds are free for its own change.
+            others = [saved for saved in bookings if saved is not booking]
+            left = SeatLedger(self._departures, others).seats_left(new_departure.departure_id)
+            if left < booking.passengers:
+                raise NoSeatsError(
+                    f"the new bus has {count_of(left, 'seat')} left, but your booking is for "
+                    f"{booking.passengers} ({new_departure.departure:%a %d %b %H:%M}). "
+                    "Your booking is unchanged."
+                )
+            new_total = round(new_fare.price * booking.passengers, 2)
+            result = Change(
+                booking=booking,
+                old_offer_id=old_fare.offer_id,
+                fee=round(old_fare.change_fee * booking.passengers, 2),
+                price_difference=max(0.0, round(new_total - booking.total_price, 2)),
+            )
+            booking.fare = new_fare
+            booking.total_price = new_total
+            booking.departure = new_departure.departure
+            booking.arrival = new_departure.arrival
+            self._store.save(bookings)
+        logger.info(
+            "Changed %s: offer %s to %s, fee %.2f EUR, price difference %.2f EUR",
+            wanted, result.old_offer_id, new_fare.offer_id, result.fee, result.price_difference,
+        )
+        return result
+
+    @staticmethod
+    def _wanted(reference: str) -> str:
+        """Return the reference in its saved form, or say that it has the wrong form."""
+        wanted = reference.strip().upper()
+        if not is_booking_reference(wanted):
+            raise BookingError(f"booking reference must look like BB-20261120-7K3QX9: {reference!r}")
+        return wanted
+
+    @staticmethod
+    def _find(bookings: Iterable[Booking], wanted: str) -> Booking:
+        """Return the saved booking with this reference."""
+        booking = next((saved for saved in bookings if saved.reference == wanted), None)
+        if booking is None:
+            raise BookingNotFoundError(
+                f"no booking found with the reference {wanted}. "
+                "The bookings command lists your references."
+            )
         return booking
 
     def _new_reference(self, moment: datetime, taken: set[str]) -> str:

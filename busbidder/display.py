@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from datetime import date
 
+from busbidder.booking import Change
 from busbidder.constraints import FilterResult, advise, describe_constraints
 from busbidder.criteria import CRITERIA
 from busbidder.explain import explain_top
@@ -257,18 +258,37 @@ def format_outcome(booking: Booking) -> list[str]:
     return lines
 
 
+def format_change(change: Change) -> list[str]:
+    """Return what a change of booking did and what it costs, then the booking."""
+    booking = change.booking
+    seats = count_of(booking.passengers, f"{booking.fare.fare_type} seat")
+    lines = [
+        f"Booking {booking.reference} is changed: {seats} to {booking.destination_name}, "
+        f"now leaving {booking.departure:%a %d %b %H:%M}.",
+    ]
+    if change.to_pay:
+        lines.append(
+            f"To pay: {change.to_pay:.2f} EUR (change fee {change.fee:.2f} EUR, "
+            f"higher ticket price {change.price_difference:.2f} EUR)."
+        )
+    else:
+        lines.append("Nothing to pay: the change is free and the new ticket does not cost more.")
+    return [RULE, "BOOKING CHANGED", RULE, *lines, "", *format_details(booking)]
+
+
 def format_confirmation(booking: Booking) -> list[str]:
     """Return the booking confirmation."""
+    return [RULE, f"BOOKING {booking.status.upper()}", RULE, *format_outcome(booking), "",
+            *format_details(booking)]
+
+
+def format_details(booking: Booking) -> list[str]:
+    """Return the details of a booking, as shown under every confirmation."""
     fare = booking.fare
     arrival_format = "%H:%M" if booking.arrival.date() == booking.departure.date() else DAY_FORMAT
     change = f"yes, fee {fare.change_fee:.2f} EUR" if fare.changeable else "no"
     refund = f"yes, {fare.refund_percent:g}% of the price" if fare.refundable else "no"
     lines = [
-        RULE,
-        f"BOOKING {booking.status.upper()}",
-        RULE,
-        *format_outcome(booking),
-        "",
         f"Reference:      {booking.reference}",
         f"Journey:        Madrid to {booking.destination_name} with {booking.company_name}",
         f"Departure:      {booking.departure:%a %d %b %Y %H:%M}",
@@ -305,5 +325,5 @@ def format_bookings(bookings: Sequence[Booking]) -> list[str]:
     active = sum(1 for booking in bookings if booking.is_active)
     lines += ["", f"{count_of(len(bookings), 'booking')}: {active} confirmed, {len(bookings) - active} cancelled."]
     if active:
-        lines.append("To cancel a confirmed booking, use the cancel command with its reference.")
+        lines.append("To change or cancel a confirmed booking, use the change or cancel command with its reference.")
     return lines

@@ -10,7 +10,7 @@ BusBidder Spain is a simulated marketplace for bus journeys from Madrid. Five fi
 2. removes the offers that break a traveller's mandatory conditions (hard constraints);
 3. ranks the remaining offers with a weighted score from 0 to 100 (soft preferences);
 4. explains why the top offer ranks first and which disadvantage remains;
-5. simulates a booking and a cancellation. No payment data is collected.
+5. simulates a booking, a change of booking and a cancellation. No payment data is collected.
 
 All companies, prices, times, ratings and emissions figures are invented.
 
@@ -70,15 +70,16 @@ Rank the same offers under every profile:
 python3 main.py compare --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable
 ```
 
-Book, list and cancel:
+Book, list, change and cancel:
 
 ```bash
 python3 main.py book --offer CL-MAL-0007-S --passengers 1
 python3 main.py bookings
+python3 main.py change --ref BB-20261120-7K3QX9 --offer CL-MAL-0009-S
 python3 main.py cancel --ref BB-20261120-7K3QX9
 ```
 
-Use the reference printed by `book` in the `cancel` command. A booking is saved in `state/` and takes a seat, so later searches show one seat fewer on that bus. Delete the `state` folder to start again with no bookings.
+Use the reference printed by `book` in the `change` and `cancel` commands. A ticket can be changed when its fare is changeable, to another bus or fare of the same company and destination. The traveller pays the change fee per passenger and the difference when the new ticket costs more; a cheaper ticket gives no money back. The fee follows the fare conditions stored with the booking, and the reference stays the same. A booking is saved in `state/` and takes a seat, so later searches show one seat fewer on that bus. Delete the `state` folder to start again with no bookings.
 
 ### What the program tells the traveller
 
@@ -90,8 +91,10 @@ Every action says whether it worked and what changed. A search, a comparison, a 
 | Search with no result | What is wrong with the offers and the value that would work, for example `47 of the 47 offers cost more than your budget of 20.00 EUR. The cheapest offer that meets your other requirements costs 29.98 EUR.` The value is taken from the offers that fail only that requirement, so it is one the traveller can act on. The advice is about a requirement whose change alone gives offers; when several qualify, the one that removed the most offers is used. When every offer fails two requirements or more, the program says that changing one requirement alone is not enough. When the dates have no buses, it names the days that do: `BusBidder has buses from 10 July 2027 to 16 July 2027.` |
 | Book | `Booking confirmed: 2 flex seats to Malaga for 95.48 EUR.`, the reference, and the seats left on that bus, or `This bus is now sold out.` |
 | Book a full bus | `Not booked: this bus is sold out (SolRuta bus to Valencia, Sat 10 Jul 13:15).`, or how many seats are left. A full bus is not a mistake by the traveller, so the line does not start with `Error`. |
+| Change | `Booking BB-... is changed: 2 standard seats to Malaga, now leaving Wed 14 Jul 09:15.`, then `To pay: 24.00 EUR (change fee 20.00 EUR, higher ticket price 4.00 EUR).` or `Nothing to pay: the change is free and the new ticket does not cost more.` |
+| Change a ticket that cannot be changed | `Not changed: this basic ticket cannot be changed. You can cancel it with the cancel command and book another bus.` The same form is used when the new bus is full or belongs to another company or destination, and the booking is left as it was. |
 | Cancel | `Booking BB-... is cancelled: 2 flex seats to Malaga.`, then `Refund: 85.93 EUR (90% of the 95.48 EUR paid).` or `No refund, because this basic ticket is not refundable.` |
-| Bookings | The list with the refund of each cancelled booking, a count of confirmed and cancelled bookings, and how to cancel. |
+| Bookings | The list with the refund of each cancelled booking, a count of confirmed and cancelled bookings, and how to change or cancel. |
 | A mistake on the command line | One line with the reason and the command that shows the options. |
 
 ### Options of `search` and `compare`
@@ -169,7 +172,7 @@ python3 tools/exploratory_tests.py alternatives
 python3 tools/fault_injection.py
 ```
 
-This checks the tests themselves. In a temporary copy of the project it makes one small change to the program at a time, such as `<` into `<=` or `and` into `or`, runs the unit tests and notes whether a test failed. A change that no test notices is listed as a survivor. The changes are chosen by a fixed rule, so the result is the same on every run. It takes a few minutes, and the project itself is not changed.
+This checks the tests themselves. In a temporary copy of the project it makes one small change to the program at a time, such as `<` into `<=` or `and` into `or`, runs the unit tests and notes whether a test failed. A change that no test notices is listed as a survivor. Every possible change is tried, so the result is the same on every run. It takes about a quarter of an hour, and the project itself is not changed.
 
 ## How offers are filtered and ranked
 
@@ -198,7 +201,7 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 | `busbidder/validation.py` | Regular expressions for identifiers, dates and times, and parsers that turn text into checked values. |
 | `busbidder/models.py` | Domain classes: `Company`, `Destination`, `Departure`, `Fare`, `Offer`, `TimeBand`, `TravelRequest`, `TravellerProfile`, `Booking`. |
 | `busbidder/loader.py` | Reads the CSV and JSON files, builds the objects, sets bad rows aside. |
-| `busbidder/booking.py` | Saved bookings, the seat ledger, booking and cancellation. |
+| `busbidder/booking.py` | Saved bookings, the seat ledger, booking, change and cancellation. |
 | `busbidder/constraints.py` | Hard constraints in a decorator registry, and the filter. |
 | `busbidder/criteria.py` | Scoring criteria in a decorator registry. |
 | `busbidder/ranking.py` | Weight checks, total score, ordering and the tie rule. |
@@ -209,7 +212,7 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 | `tools/generate_data.py` | Generator for the four main data files. Fixed seed. |
 | `tools/exploratory_tests.py` | Exploratory tests: unusual input, rules that must always hold, bookings at the same moment, trials of the ranking, and design choices measured against alternatives. |
 | `tools/fault_injection.py` | Fault injection: changes the program one operator at a time in a copy and counts how many changes the tests notice. |
-| `tests/` | Unit tests, one file per module, one for the data generator, one for the feedback to the traveller (`test_feedback.py`) and one for exact limits found by fault injection (`test_boundaries.py`), and `helpers.py` with small builders. |
+| `tests/` | Unit tests, one file per module, one for the data generator, one for the feedback to the traveller (`test_feedback.py`), one for changing a booking (`test_change.py`) and one for exact limits found by fault injection (`test_boundaries.py`), and `helpers.py` with small builders. |
 
 ## Input files (in `data/`)
 
@@ -239,7 +242,7 @@ python3 tools/generate_data.py
 | File | Content |
 |---|---|
 | `output/rejected_records.txt` | The rows set aside in the last run. Rewritten on every run. |
-| `logs/busbidder.log` | Commands, load counts, rejected rows, sold-out departures, searches, bookings, cancellations and errors. |
+| `logs/busbidder.log` | Commands, load counts, rejected rows, sold-out departures, searches, bookings, changes, cancellations and errors. |
 | `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. The file is checked when it is read, so a hand-edited value that is not valid stops the command with an error. |
 
 Two copies of the program can book at the same moment. While one copy reads, changes and writes `bookings.json` it holds a lock file, `bookings.json.lock`, and the others wait for up to 10 seconds. A copy that cannot get the lock in that time stops with an error and changes nothing. A lock older than 30 seconds is taken to be left over from a run that was stopped, and is removed. `output/exploratory_simultaneous_bookings.txt` shows 8 bookings started at once for a bus with 2 seats, 20 times: every traveller is told what was saved. Before the lock was added (commit `8690e83`) that held in 8 of 20 rounds. The lock protects against copies on the same computer; a shared network folder was not tested.
@@ -263,5 +266,6 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | `exploratory_rules.txt` | `python3 tools/exploratory_tests.py rules > output/exploratory_rules.txt` |
 | `exploratory_trials.txt` | `python3 tools/exploratory_tests.py trials > output/exploratory_trials.txt` |
 | `exploratory_alternatives.txt` | `python3 tools/exploratory_tests.py alternatives > output/exploratory_alternatives.txt` |
+| `change_example.txt` | A booking of `CL-MAL-0007-S` for two passengers, changed to `CL-MAL-0009-S` and then to `VB-MAL-0005-S` (refused: another company), with `--state` set to an empty folder. The reference differs on each run. |
 | `fault_injection.txt` | `python3 tools/fault_injection.py > output/fault_injection.txt` |
 | `exploratory_simultaneous_bookings.txt` | `python3 tools/exploratory_tests.py race > output/exploratory_simultaneous_bookings.txt`. The result depends on timing. |

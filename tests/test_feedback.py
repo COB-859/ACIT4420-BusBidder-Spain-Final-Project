@@ -364,7 +364,7 @@ class CommandFeedbackTests(CliTestCase):
                          if line.startswith("Reference:"))
         _code, text = self.run_main("bookings")
         self.assertIn("2 bookings: 2 confirmed, 0 cancelled.", text)
-        self.assertIn("To cancel a confirmed booking, use the cancel command with its reference.", text)
+        self.assertIn("To change or cancel a confirmed booking, use the change or cancel command with its reference.", text)
         self.run_main("cancel", "--ref", reference)
         _code, text = self.run_main("bookings")
         self.assertIn("2 bookings: 1 confirmed, 1 cancelled.", text)

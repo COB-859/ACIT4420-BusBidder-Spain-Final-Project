@@ -16,6 +16,7 @@ from busbidder.booking import BOOKINGS_FILE, BookingService, BookingStore, SeatL
 from busbidder.constraints import filter_offers
 from busbidder.display import (
     format_bookings,
+    format_change,
     format_comparison,
     format_confirmation,
     format_filter,
@@ -32,6 +33,7 @@ from busbidder.exceptions import (
     InvalidRecordError,
     InvalidRequestError,
     NoSeatsError,
+    NotChangeableError,
     WeightError,
 )
 from busbidder.loader import (
@@ -347,6 +349,15 @@ def run_cancel(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def run_change(args: argparse.Namespace) -> int:
+    """Move one booking to another offer and print what happened and what it costs."""
+    session = open_session(args, need_profiles=False)
+    service = make_service(session)
+    change = service.change(args.ref, args.offer)
+    emit([*format_change(change), seats_line(session, service, change.booking.departure_id)])
+    return EXIT_OK
+
+
 def run_bookings(args: argparse.Namespace) -> int:
     """List the saved bookings."""
     emit(format_bookings(make_service(open_session(args, need_profiles=False)).bookings()))
@@ -507,6 +518,7 @@ COMMANDS = {
     "compare": run_compare,
     "book": run_book,
     "bookings": run_bookings,
+    "change": run_change,
     "cancel": run_cancel,
 }
 
@@ -626,6 +638,12 @@ def build_parser() -> argparse.ArgumentParser:
     bookings = commands.add_parser("bookings", help="list the saved bookings")
     _add_folder_options(bookings, top_level=False)
 
+    change = commands.add_parser("change", help="move a changeable booking to another bus or fare")
+    _add_folder_options(change, top_level=False)
+    change.add_argument("--ref", required=True, help="booking reference, for example BB-20261120-7K3QX9")
+    change.add_argument("--offer", required=True,
+                        help="the new offer ID, of the same company and destination")
+
     cancel = commands.add_parser("cancel", help="cancel a booking (simulated refund)")
     _add_folder_options(cancel, top_level=False)
     cancel.add_argument("--ref", required=True, help="booking reference, for example BB-20261120-7K3QX9")
@@ -647,10 +665,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command is None:
             return run_guided(args)
         return COMMANDS[args.command](args)
-    except NoSeatsError as error:
-        # A full bus is not a mistake by the traveller, so it is not called an error.
+    except (NoSeatsError, NotChangeableError) as error:
+        # A full bus or a ticket that cannot be changed is not a mistake by
+        # the traveller, so it is not called an error.
         log.info("%s refused: %s", command, error)
-        print(f"Not booked: {error}")
+        print(f"{'Not changed' if command == 'change' else 'Not booked'}: {error}")
         return EXIT_ERROR
     except BusBidderError as error:
         log.error("%s failed: %s: %s", command, type(error).__name__, error)

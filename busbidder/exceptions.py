@@ -44,5 +44,9 @@ class NoSeatsError(BookingError):
     """The departure does not have enough seats left for the party."""
 
 
+class NotChangeableError(BookingError):
+    """The ticket's fare conditions do not allow a change."""
+
+
 class BookingNotFoundError(BookingError):
     """No saved booking has the given reference."""

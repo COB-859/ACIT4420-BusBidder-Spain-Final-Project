@@ -268,7 +268,7 @@
     feedback: Error: no booking found with the reference BB-<date>-<code>. The bookings command lists your references.
 75. an unknown command  [exit code 2]
     command:  frobnicate
-    feedback: Error: argument command: invalid choice: 'frobnicate' (choose from 'validate', 'search', 'compare', 'book', 'bookings', 'cancel').
+    feedback: Error: argument command: invalid choice: 'frobnicate' (choose from 'validate', 'search', 'compare', 'book', 'bookings', 'change', 'cancel').
     feedback: Run 'python3 main.py --help' to see the options.
 
 75 cases run. Crashes or unexpected faults: 0
