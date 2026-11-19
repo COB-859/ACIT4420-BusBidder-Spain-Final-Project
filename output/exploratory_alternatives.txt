@@ -1,0 +1,33 @@
+1. Price on a relative scale (the program) against a fixed scale
+   60 requests: each of the 15 cities with each of the 4 departure periods, the whole week,
+   with a budget at the median price of the city, under each of the 4 profiles: 240 rankings.
+   Relative: cheapest offer left 100 points, dearest 0. Fixed: 0 points at the budget,
+   100 points at half the budget or less, whatever the other offers cost.
+   Rankings compared: 240
+                                                              Relative   Fixed
+   First two offers more than 0 and less than 1 point apart         77      65
+   Order of the others changes when the last offer is removed       43      21
+   The two scales recommend the same offer in 231 of 240 rankings.
+
+2. How large must a weight be to decide the ranking? (the 70 percent limit)
+   The same 60 requests. Price gets the weight shown; duration, departure and flexibility
+   share the rest equally. Counted: rankings in which the cheapest offer wins.
+   price weight 40%: the cheapest offer wins in  2 of 60
+   price weight 50%: the cheapest offer wins in  8 of 60
+   price weight 60%: the cheapest offer wins in 15 of 60
+   price weight 70%: the cheapest offer wins in 20 of 60
+   price weight 80%: the cheapest offer wins in 29 of 60
+   price weight 90%: the cheapest offer wins in 44 of 60
+
+3. Where to draw the line for a near tie? (the 1 point limit)
+   The 60 requests without a budget, 4 profiles: 240 rankings, as in the trials part.
+   first two offers more than 0 and less than 0.5 points apart:  60 of 240
+   first two offers more than 0 and less than 1 points apart: 102 of 240
+   first two offers more than 0 and less than 2 points apart: 164 of 240
+   first two offers more than 0 and less than 5 points apart: 235 of 240
+
+4. A missing emissions figure: the median (the program) against the worst score
+   The 60 requests without a budget, environment profile (emissions 40 percent).
+   Rankings that hold an offer without a figure: 60 of 60, with 98 offers on average
+   Best rank of an offer without a figure, on average: median 33.4, worst score 61.3
+   With the median, 59 offers that report a figure rank below it on average.

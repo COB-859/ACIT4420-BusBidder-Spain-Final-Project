@@ -1,65 +1,65 @@
-2026-11-18 15:17:35 INFO busbidder: Command: validate
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected companies_invalid.csv, line 2: rating is above 5: 7.2
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected companies_invalid.csv, line 3: duplicate company code: SR
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected companies_invalid.csv, line 4: company name is missing
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 2: unknown destination: 'XXX'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 3: unknown company: 'ZZ'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 4: departure is not a real date and time: '2027-07-32T08:00'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 5: arrival 2027-07-12T08:00 is not after departure 2027-07-12T14:00
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 6: seats is below 0: -5
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 7: transfers is missing
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 8: departure ID must look like SR-MAL-0001: 'SR_MAL_1'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 9: departure ID SR-MAL-9005 does not match company CE
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 10: duplicate departure ID: SR-MAL-0001
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 11: emissions is below 0: -3.5
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 12: journey is longer than 24 hours: 2940 minutes
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected departures_invalid.csv, line 13: transfers is not a whole number: 'two'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 2: price must be above 0: -12.5
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 3: unknown departure: 'SR-MAL-9999'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 4: offer ID must look like SR-MAL-0001-B: 'SRMAL0002B'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 5: offer ID SR-MAL-0003-F does not match departure SR-MAL-0002
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 6: duplicate offer ID: SR-MAL-0001-B
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 7: changeable must be yes or no: 'maybe'
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 8: refund percent is outside 0 to 100: 150
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 9: offer ID CE-MAL-0002-B does not match fare type flex
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 10: price is missing
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 11: refundable is no but refund percent is 80
-2026-11-18 15:17:35 WARNING busbidder.loader: Rejected fares_invalid.csv, line 12: price is not a number: 'cheap'
-2026-11-18 15:17:35 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:35 INFO busbidder.loader: 40 departures are sold out in the data files (0 seats): SR-COR-0001, CE-BIL-0002, CE-MUR-0001, CL-BIL-0001, VB-GRA-0001, NV-SAL-0001, SR-VAL-0003, SR-COR-0004, CE-VAL-0003, CE-SSE-0003, VB-GRA-0002, SR-SAL-0005, CE-SSE-0005, CE-MUR-0005, CL-BAR-0005, CL-SAL-0003, VB-ZAR-0003, NV-MAL-0003, NV-CAD-0003, SR-SAL-0007, SR-SCO-0004, CE-COR-0007, CE-ZAR-0007, CL-VAL-0008, SR-BIL-0006, CL-SSE-0009, VB-MUR-0005, SR-GRA-0007, CE-SEV-0012, CE-MUR-0012, CE-SAL-0012, CE-SCO-0012, CL-VAL-0012, CL-MAL-0012, SR-SCO-0010, CE-BAR-0013, CL-SEV-0007, CL-MAL-0014, CL-GRA-0007, NV-GRA-0007
-2026-11-18 15:17:36 INFO busbidder: Command: search
-2026-11-18 15:17:36 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:36 INFO busbidder.cli: Search: Malaga, 2027-07-12 to 2027-07-14, weights from typed by the traveller: 47 in scope, 30 removed, 17 ranked, top offer CL-MAL-0007-S
-2026-11-18 15:17:36 INFO busbidder: Command: compare
-2026-11-18 15:17:36 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:36 INFO busbidder.cli: Compare: Malaga, 2027-07-12 to 2027-07-14, profiles budget, business, flexible, eco: 17 ranked, top offers budget=SR-MAL-0008-S, business=VB-MAL-0005-S, flexible=VB-MAL-0005-S, eco=VB-MAL-0005-S
-2026-11-18 15:17:37 INFO busbidder: Command: compare
-2026-11-18 15:17:37 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:37 INFO busbidder.cli: Compare: Barcelona, 2027-07-12 to 2027-07-14, profiles budget, business, flexible, eco: 40 ranked, top offers budget=CL-BAR-0009-B, business=CE-BAR-0006-F, flexible=CL-BAR-0009-F, eco=VB-BAR-0004-S
-2026-11-18 15:17:38 INFO busbidder: Command: compare
-2026-11-18 15:17:38 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:38 INFO busbidder.cli: Compare: Santiago de Compostela, 2027-07-10 to 2027-07-16, profiles budget, business, flexible, eco: 70 ranked, top offers budget=NV-SCO-0004-B, business=CE-SCO-0011-S, flexible=VB-SCO-0005-S, eco=VB-SCO-0006-S
-2026-11-18 15:17:39 INFO busbidder: Command: search
-2026-11-18 15:17:39 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:39 INFO busbidder.cli: Search: Malaga, 2027-07-12 to 2027-07-14, weights from typed by the traveller: 47 in scope, 30 removed, 17 ranked, top offer VB-MAL-0005-S
-2026-11-18 15:17:40 INFO busbidder: Command: search
-2026-11-18 15:17:40 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:40 INFO busbidder.cli: Search: Malaga, 2027-07-12 to 2027-07-14, weights from typed by the traveller: 47 in scope, 30 removed, 17 ranked, top offer SR-MAL-0008-S
-2026-11-18 15:17:41 INFO busbidder: Command: search
-2026-11-18 15:17:41 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:41 ERROR busbidder: search failed: InvalidRequestError: unknown destination: 'Paris'. Known destinations: Barcelona, Valencia, Seville, Malaga, Granada, Cordoba, Bilbao, San Sebastian, Zaragoza, Alicante, Murcia, Salamanca, Toledo, Santiago de Compostela, Cadiz
-2026-11-18 15:17:41 INFO busbidder: Command: search
-2026-11-18 15:17:42 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:42 ERROR busbidder: search failed: WeightError: weights must total 100 (or 1.0), but they total 110
-2026-11-18 15:17:42 INFO busbidder: Command: book
-2026-11-18 15:17:42 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:42 INFO busbidder.booking: Booked BB-20261118-6GMHUV: offer CL-MAL-0007-F, 2 passenger(s), 95.48 EUR, 42 seat(s) left on CL-MAL-0007
-2026-11-18 15:17:43 INFO busbidder: Command: book
-2026-11-18 15:17:43 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:43 INFO busbidder: book refused: this bus is sold out (SolRuta bus to Cordoba, Sat 10 Jul 08:15). Search again to see buses that still have seats.
-2026-11-18 15:17:44 INFO busbidder: Command: cancel
-2026-11-18 15:17:44 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:44 INFO busbidder.booking: Cancelled BB-20261118-6GMHUV: 2 seat(s) freed on CL-MAL-0007, refund 85.93 EUR
-2026-11-18 15:17:45 INFO busbidder: Command: cancel
-2026-11-18 15:17:45 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
-2026-11-18 15:17:45 ERROR busbidder: cancel failed: BookingError: booking BB-20261118-6GMHUV is already cancelled. Its refund was 85.93 EUR.
+2026-11-19 13:07:19 INFO busbidder: Command: validate
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected companies_invalid.csv, line 2: rating is above 5: 7.2
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected companies_invalid.csv, line 3: duplicate company code: SR
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected companies_invalid.csv, line 4: company name is missing
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 2: unknown destination: 'XXX'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 3: unknown company: 'ZZ'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 4: departure is not a real date and time: '2027-07-32T08:00'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 5: arrival 2027-07-12T08:00 is not after departure 2027-07-12T14:00
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 6: seats is below 0: -5
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 7: transfers is missing
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 8: departure ID must look like SR-MAL-0001: 'SR_MAL_1'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 9: departure ID SR-MAL-9005 does not match company CE
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 10: duplicate departure ID: SR-MAL-0001
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 11: emissions is below 0: -3.5
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 12: journey is longer than 24 hours: 2940 minutes
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected departures_invalid.csv, line 13: transfers is not a whole number: 'two'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 2: price must be above 0: -12.5
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 3: unknown departure: 'SR-MAL-9999'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 4: offer ID must look like SR-MAL-0001-B: 'SRMAL0002B'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 5: offer ID SR-MAL-0003-F does not match departure SR-MAL-0002
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 6: duplicate offer ID: SR-MAL-0001-B
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 7: changeable must be yes or no: 'maybe'
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 8: refund percent is outside 0 to 100: 150
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 9: offer ID CE-MAL-0002-B does not match fare type flex
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 10: price is missing
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 11: refundable is no but refund percent is 80
+2026-11-19 13:07:19 WARNING busbidder.loader: Rejected fares_invalid.csv, line 12: price is not a number: 'cheap'
+2026-11-19 13:07:19 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:19 INFO busbidder.loader: 40 departures are sold out in the data files (0 seats): SR-COR-0001, CE-BIL-0002, CE-MUR-0001, CL-BIL-0001, VB-GRA-0001, NV-SAL-0001, SR-VAL-0003, SR-COR-0004, CE-VAL-0003, CE-SSE-0003, VB-GRA-0002, SR-SAL-0005, CE-SSE-0005, CE-MUR-0005, CL-BAR-0005, CL-SAL-0003, VB-ZAR-0003, NV-MAL-0003, NV-CAD-0003, SR-SAL-0007, SR-SCO-0004, CE-COR-0007, CE-ZAR-0007, CL-VAL-0008, SR-BIL-0006, CL-SSE-0009, VB-MUR-0005, SR-GRA-0007, CE-SEV-0012, CE-MUR-0012, CE-SAL-0012, CE-SCO-0012, CL-VAL-0012, CL-MAL-0012, SR-SCO-0010, CE-BAR-0013, CL-SEV-0007, CL-MAL-0014, CL-GRA-0007, NV-GRA-0007
+2026-11-19 13:07:20 INFO busbidder: Command: search
+2026-11-19 13:07:20 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:20 INFO busbidder.cli: Search: Malaga, 2027-07-12 to 2027-07-14, weights from typed by the traveller: 47 in scope, 30 removed, 17 ranked, top offer CL-MAL-0007-S
+2026-11-19 13:07:20 INFO busbidder: Command: compare
+2026-11-19 13:07:20 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:20 INFO busbidder.cli: Compare: Malaga, 2027-07-12 to 2027-07-14, profiles budget, business, flexible, eco: 17 ranked, top offers budget=SR-MAL-0008-S, business=VB-MAL-0005-S, flexible=VB-MAL-0005-S, eco=VB-MAL-0005-S
+2026-11-19 13:07:22 INFO busbidder: Command: compare
+2026-11-19 13:07:22 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:22 INFO busbidder.cli: Compare: Barcelona, 2027-07-12 to 2027-07-14, profiles budget, business, flexible, eco: 40 ranked, top offers budget=CL-BAR-0009-B, business=CE-BAR-0006-F, flexible=CL-BAR-0009-F, eco=VB-BAR-0004-S
+2026-11-19 13:07:23 INFO busbidder: Command: compare
+2026-11-19 13:07:23 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:23 INFO busbidder.cli: Compare: Santiago de Compostela, 2027-07-10 to 2027-07-16, profiles budget, business, flexible, eco: 70 ranked, top offers budget=NV-SCO-0004-B, business=CE-SCO-0011-S, flexible=VB-SCO-0005-S, eco=VB-SCO-0006-S
+2026-11-19 13:07:25 INFO busbidder: Command: search
+2026-11-19 13:07:25 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:25 INFO busbidder.cli: Search: Malaga, 2027-07-12 to 2027-07-14, weights from typed by the traveller: 47 in scope, 30 removed, 17 ranked, top offer VB-MAL-0005-S
+2026-11-19 13:07:25 INFO busbidder: Command: search
+2026-11-19 13:07:25 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:25 INFO busbidder.cli: Search: Malaga, 2027-07-12 to 2027-07-14, weights from typed by the traveller: 47 in scope, 30 removed, 17 ranked, top offer SR-MAL-0008-S
+2026-11-19 13:07:26 INFO busbidder: Command: search
+2026-11-19 13:07:26 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:26 ERROR busbidder: search failed: InvalidRequestError: unknown destination: 'Paris'. Known destinations: Barcelona, Valencia, Seville, Malaga, Granada, Cordoba, Bilbao, San Sebastian, Zaragoza, Alicante, Murcia, Salamanca, Toledo, Santiago de Compostela, Cadiz
+2026-11-19 13:07:26 INFO busbidder: Command: search
+2026-11-19 13:07:27 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:27 ERROR busbidder: search failed: WeightError: weights must total 100 (or 1.0), but they total 110
+2026-11-19 13:07:27 INFO busbidder: Command: book
+2026-11-19 13:07:27 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:27 INFO busbidder.booking: Booked BB-20261119-CX9T7W: offer CL-MAL-0007-F, 2 passenger(s), 95.48 EUR, 42 seat(s) left on CL-MAL-0007
+2026-11-19 13:07:28 INFO busbidder: Command: book
+2026-11-19 13:07:28 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:28 INFO busbidder: book refused: this bus is sold out (SolRuta bus to Cordoba, Sat 10 Jul 08:15). Search again to see buses that still have seats.
+2026-11-19 13:07:28 INFO busbidder: Command: cancel
+2026-11-19 13:07:28 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:28 INFO busbidder.booking: Cancelled BB-20261119-CX9T7W: 2 seat(s) freed on CL-MAL-0007, refund 85.93 EUR
+2026-11-19 13:07:29 INFO busbidder: Command: cancel
+2026-11-19 13:07:29 INFO busbidder.loader: Loaded 5 companies, 15 destinations, 733 departures, 1558 fares; rejected 26 rows
+2026-11-19 13:07:29 ERROR busbidder: cancel failed: BookingError: booking BB-20261119-CX9T7W is already cancelled. Its refund was 85.93 EUR.

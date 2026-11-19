@@ -4,6 +4,7 @@
     python3 tools/exploratory_tests.py rules    rules that must hold for any input
     python3 tools/exploratory_tests.py race     several bookings at the same moment
     python3 tools/exploratory_tests.py trials   how stable and how even-handed the ranking is
+    python3 tools/exploratory_tests.py alternatives   design choices measured against alternatives
 
 Run it from the project folder. It reads the real data files, and writes
 bookings and logs only to a temporary folder, so the project is not changed.
@@ -11,8 +12,8 @@ bookings and logs only to a temporary folder, so the project is not changed.
 The unit tests in tests/ check known answers. These checks look for what
 the unit tests did not think of: input nobody planned for, rules that
 must hold whatever the request is, and what the traveller is told. The
-random parts use a fixed seed, so "edge", "rules" and "trials" give the
-same result on every run. "race" depends on timing and can differ between
+random parts use a fixed seed, so "edge", "rules", "trials" and
+"alternatives" give the same result on every run. "race" depends on timing and can differ between
 runs.
 """
 
@@ -28,6 +29,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,7 +40,7 @@ from busbidder.booking import BookingService, BookingStore  # noqa: E402
 from busbidder.constraints import filter_offers  # noqa: E402
 from busbidder.exceptions import BusBidderError  # noqa: E402
 from busbidder.loader import PROFILES_FILE, load_all, load_profiles  # noqa: E402
-from busbidder.ranking import check_weights, near_tie_gap, rank_offers  # noqa: E402
+from busbidder.ranking import ScoredOffer, check_weights, near_tie_gap, rank_offers  # noqa: E402
 
 SEED = 4420
 DATA = ROOT / "data"
@@ -486,16 +488,148 @@ def explore_trials() -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# alternatives: design choices of the scoring model, measured against alternatives
+# --------------------------------------------------------------------------
+
+def _order(scored_totals: list[tuple[ScoredOffer, float]]) -> list[tuple[str, float]]:
+    """Order (offer, total) pairs with the program's own tie rule."""
+    ordered = sorted(scored_totals, key=lambda pair: (
+        -pair[1], pair[0].offer.price, pair[0].offer.departure.departure, pair[0].offer.offer_id))
+    return [(scored.offer.offer_id, total) for scored, total in ordered]
+
+
+def _rerank(ranked: list[ScoredOffer], weights: dict[str, float], name: str,
+            points_for: "Callable[[ScoredOffer], float]") -> list[tuple[str, float]]:
+    """Rank again with the points of one criterion replaced."""
+    result = []
+    for scored in ranked:
+        total = sum(weights[key] / 100 * (points_for(scored) if key == name else scored.scores[key].points)
+                    for key in weights)
+        result.append((scored, round(total, 2)))
+    return _order(result)
+
+
+def _gap(order: list[tuple[str, float]]) -> float:
+    return round(order[0][1] - order[1][1], 2) if len(order) > 1 else 99.0
+
+
+def explore_alternatives() -> int:
+    """Measure three choices of the scoring model against an alternative each.
+
+    The program is not changed: the alternative totals are calculated here
+    from the points the program gives.
+    """
+    data = load_all(DATA)
+    profiles = {key: check_weights(profile.weights) for key, profile in load_profiles(DATA / PROFILES_FILE).items()}
+    offers = data.offers()
+    seats = {key: departure.seats for key, departure in data.departures.items()}
+
+    def ranking(city: str, period: str, weights: dict[str, float], budget: float | None = None,
+                without: str | None = None) -> list[ScoredOffer]:
+        request = cli.build_request(data.destinations, city, "2027-07-10", "2027-07-16", period, budget=budget)
+        accepted = [offer for offer in filter_offers(offers, request, seats).accepted if offer.offer_id != without]
+        return rank_offers(accepted, request, weights)
+
+    cities = [city.name for city in data.destinations.values()]
+    budgets = {}
+    for city in cities:
+        prices = sorted(offer.price for offer in offers if offer.departure.destination.name == city)
+        budgets[city] = float(round(statistics.median(prices)))
+
+    print("1. Price on a relative scale (the program) against a fixed scale")
+    print("   60 requests: each of the 15 cities with each of the 4 departure periods, the whole week,")
+    print("   with a budget at the median price of the city, under each of the 4 profiles: 240 rankings.")
+    print("   Relative: cheapest offer left 100 points, dearest 0. Fixed: 0 points at the budget,")
+    print("   100 points at half the budget or less, whatever the other offers cost.")
+    same_winner = reorder_relative = reorder_fixed = near_relative = near_fixed = total = 0
+    for weights in profiles.values():
+        for city in cities:
+            for period in PERIODS:
+                budget = budgets[city]
+                fixed = lambda scored: max(0.0, min(100.0, (budget - scored.offer.price) / (budget / 2) * 100))
+                ranked = ranking(city, period, weights, budget)
+                if len(ranked) < 3:
+                    continue
+                total += 1
+                relative_order = [(scored.offer.offer_id, scored.total) for scored in ranked]
+                fixed_order = _rerank(ranked, weights, "price", fixed)
+                same_winner += relative_order[0][0] == fixed_order[0][0]
+                near_relative += 0 < _gap(relative_order) < 1
+                near_fixed += 0 < _gap(fixed_order) < 1
+                # Take away the offer ranked last and see whether the others keep their order.
+                last_relative, last_fixed = relative_order[-1][0], fixed_order[-1][0]
+                again = ranking(city, period, weights, budget, without=last_relative)
+                reorder_relative += [o.offer.offer_id for o in again] != [i for i, _t in relative_order[:-1]]
+                again = ranking(city, period, weights, budget, without=last_fixed)
+                reorder_fixed += [i for i, _t in _rerank(again, weights, "price", fixed)] != [i for i, _t in fixed_order[:-1]]
+    print(f"   Rankings compared: {total}")
+    print(f"   {'':<58}{'Relative':>9}{'Fixed':>8}")
+    print(f"   {'First two offers more than 0 and less than 1 point apart':<58}{near_relative:>9}{near_fixed:>8}")
+    print(f"   {'Order of the others changes when the last offer is removed':<58}{reorder_relative:>9}{reorder_fixed:>8}")
+    print(f"   The two scales recommend the same offer in {same_winner} of {total} rankings.")
+
+    print("\n2. How large must a weight be to decide the ranking? (the 70 percent limit)")
+    print("   The same 60 requests. Price gets the weight shown; duration, departure and flexibility")
+    print("   share the rest equally. Counted: rankings in which the cheapest offer wins.")
+    for weight in (40, 50, 60, 70, 80, 90):
+        weights = check_weights({"price": float(weight), "duration": (100 - weight) / 3,
+                                 "time": (100 - weight) / 3, "flex": (100 - weight) / 3})
+        cheapest_wins = count = 0
+        for city in cities:
+            for period in PERIODS:
+                ranked = ranking(city, period, weights, budgets[city])
+                count += 1
+                cheapest_wins += ranked[0].offer.price == min(scored.offer.price for scored in ranked)
+        print(f"   price weight {weight:>2}%: the cheapest offer wins in {cheapest_wins:>2} of {count}")
+
+    print("\n3. Where to draw the line for a near tie? (the 1 point limit)")
+    print("   The 60 requests without a budget, 4 profiles: 240 rankings, as in the trials part.")
+    gaps = [_gap([(scored.offer.offer_id, scored.total) for scored in ranking(city, period, weights)])
+            for weights in profiles.values() for city in cities for period in PERIODS]
+    for limit in (0.5, 1.0, 2.0, 5.0):
+        print(f"   first two offers more than 0 and less than {limit:g} points apart: "
+              f"{sum(0 < gap < limit for gap in gaps):>3} of {len(gaps)}")
+
+    print("\n4. A missing emissions figure: the median (the program) against the worst score")
+    print("   The 60 requests without a budget, environment profile (emissions 40 percent).")
+    eco = profiles["eco"]
+    best_median, best_worst, sizes, overtaken = [], [], [], 0
+    for city in cities:
+        for period in PERIODS:
+            ranked = ranking(city, period, eco)
+            missing = {scored.offer.offer_id for scored in ranked if scored.scores["emissions"].estimated}
+            if not missing:
+                continue
+            worst = _rerank(ranked, eco, "emissions",
+                            lambda scored: 0.0 if scored.scores["emissions"].estimated else scored.scores["emissions"].points)
+            median_order = [scored.offer.offer_id for scored in ranked]
+            worst_order = [offer_id for offer_id, _total in worst]
+            best_median.append(1 + min(median_order.index(offer_id) for offer_id in missing))
+            best_worst.append(1 + min(worst_order.index(offer_id) for offer_id in missing))
+            sizes.append(len(ranked))
+            # Offers that report a figure and still rank below the best offer that reports none.
+            overtaken += sum(1 for offer_id in median_order[best_median[-1]:] if offer_id not in missing)
+    print(f"   Rankings that hold an offer without a figure: {len(sizes)} of {len(cities) * len(PERIODS)}, "
+          f"with {statistics.mean(sizes):.0f} offers on average")
+    print(f"   Best rank of an offer without a figure, on average: median {statistics.mean(best_median):.1f}, "
+          f"worst score {statistics.mean(best_worst):.1f}")
+    print(f"   With the median, {overtaken / len(sizes):.0f} offers that report a figure rank below it on average.")
+    return 0
+
+
 def main() -> int:
     """Run the chosen part and return 1 when a crash or a broken rule was found."""
     parser = argparse.ArgumentParser(description="Exploratory tests for BusBidder Spain.")
-    parser.add_argument("part", choices=("edge", "rules", "race", "trials"),
+    parser.add_argument("part", choices=("edge", "rules", "race", "trials", "alternatives"),
                         help="edge: unusual input; rules: rules that must always hold; "
                              "race: bookings at the same moment; trials: stability and "
-                             "even-handedness of the ranking")
+                             "even-handedness of the ranking; alternatives: design choices "
+                             "measured against alternatives")
     part = parser.parse_args().part
     found = {"edge": explore_edge_cases, "rules": explore_rules,
-             "race": explore_simultaneous_bookings, "trials": explore_trials}[part]()
+             "race": explore_simultaneous_bookings, "trials": explore_trials,
+             "alternatives": explore_alternatives}[part]()
     return 1 if found else 0
 
 
