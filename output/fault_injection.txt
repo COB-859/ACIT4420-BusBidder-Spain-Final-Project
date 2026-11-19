@@ -9,11 +9,11 @@ display               8       8         0
 explain               5       5         0
 loader                6       6         0
 models               25      24         1
-ranking               7       7         0
+ranking               7       6         1
 validation            8       8         0
-Total               111     108         3
+Total               111     107         4
 
-The tests caught 108 of 111 injected faults (97 percent).
+The tests caught 107 of 111 injected faults (96 percent).
 
 Survivors (a change no test noticed):
   busbidder/booking.py:108
@@ -25,3 +25,6 @@ Survivors (a change no test noticed):
   busbidder/models.py:256
       was:  inside = moment >= start or moment <= end
       made: inside = moment >= start or moment < end
+  busbidder/ranking.py:67
+      was:  elif abs(total - FRACTION_TOTAL) <= FRACTION_TOLERANCE:
+      made: elif abs(total - FRACTION_TOTAL) < FRACTION_TOLERANCE:

@@ -17,7 +17,7 @@ result is the same on every run. It takes a few minutes.
 
 from __future__ import annotations
 
-import py_compile
+import os
 import re
 import shutil
 import subprocess
@@ -72,10 +72,13 @@ def candidates() -> list[tuple[str, int, str, str]]:
 
 def tests_fail(folder: Path) -> bool:
     """Run the unit tests in the copy and return True when a test fails or the run hangs."""
+    # No compiled files are written or reused: a cached file from an earlier
+    # change could otherwise be run in place of the current one.
+    environment = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", ".", "-f", "-q"],
-            cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120,
+            [sys.executable, "-B", "-m", "unittest", "discover", "-s", "tests", "-t", ".", "-f", "-q"],
+            cwd=folder, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120, env=environment,
         )
     except subprocess.TimeoutExpired:
         return True
@@ -104,10 +107,11 @@ def main() -> int:
             lines = original.splitlines(keepends=True)
             ending = lines[number - 1][len(lines[number - 1].rstrip("\r\n")):]
             lines[number - 1] = new_line + ending
-            path.write_text("".join(lines), encoding="utf-8")
+            changed_source = "".join(lines)
+            path.write_text(changed_source, encoding="utf-8")
             try:
-                py_compile.compile(str(path), doraise=True)
-            except py_compile.PyCompileError:
+                compile(changed_source, str(path), "exec")      # checks the syntax, writes no file
+            except SyntaxError:
                 path.write_text(original, encoding="utf-8")
                 continue        # not valid Python, so not a fault a test could miss
             injected[module] = injected.get(module, 0) + 1
