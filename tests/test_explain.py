@@ -86,7 +86,7 @@ class ExplainTests(unittest.TestCase):
 
     def test_tie_is_explained_by_the_tie_rule(self):
         cheap = make_offer("B", serial=2, price=30)
-        flexible = make_offer("F", serial=1, price=35, changeable=True, refundable=True)
+        flexible = make_offer("F", serial=1, price=35, changeable=True, refundable=True, refund_percent=100)
         text = explanation([flexible, cheap], weights=EQUAL_WEIGHTS)
         self.assertIn("same total as the runner-up SR-MAL-0001-F (75.00 points)", text)
         self.assertIn("tie rule", text)

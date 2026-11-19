@@ -8,7 +8,6 @@ decorator; the ranker walks through the registry.
 
 from __future__ import annotations
 
-import statistics
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
@@ -119,13 +118,18 @@ def departure_time_score(offers: Sequence[Offer], request: TravelRequest) -> lis
 
 @criterion("flex", "Flexibility")
 def flexibility_score(offers: Sequence[Offer], request: TravelRequest) -> list[Score]:
-    """Half the points for a changeable ticket, half for a refundable one."""
+    """Half the points for a changeable ticket, half for the share of the price it refunds.
+
+    A ticket that refunds 50 percent gets half of the refund points, so it
+    no longer scores like one that refunds 90 percent.
+    """
     scores = []
     for offer in offers:
         fare = offer.fare
-        points = POINTS_CHANGEABLE * fare.changeable + POINTS_REFUNDABLE * fare.refundable
+        # A fare that is not refundable has a refund of 0 percent; the Fare class checks that.
+        points = POINTS_CHANGEABLE * fare.changeable + POINTS_REFUNDABLE * fare.refund_percent / 100
         words = [word for word, has in (("changeable", fare.changeable),
-                                        ("refundable", fare.refundable)) if has]
+                                        (f"{fare.refund_percent:g}% refund", fare.refundable)) if has]
         scores.append(Score(points, " + ".join(words) or "fixed"))
     return scores
 
@@ -156,8 +160,11 @@ def rating_score(offers: Sequence[Offer], request: TravelRequest) -> list[Score]
 def emissions_score(offers: Sequence[Offer], request: TravelRequest) -> list[Score]:
     """Lower emissions per passenger is better, compared with the other offers.
 
-    An offer with no reported value gets the median points of the offers
-    that report one, because a missing number says nothing about the bus.
+    An offer with no reported value gets the lowest points among the offers
+    that report one. Not reporting then never ranks above reporting, and the
+    offer is still not placed below a bus with a real figure. (The median
+    was used first; measured on the data, it let an offer without a figure
+    pass most offers that reported one.)
     If no offer reports a value, every offer gets a neutral 50.
     """
     reported = [offer.departure.emissions_kg for offer in offers
@@ -171,7 +178,7 @@ def emissions_score(offers: Sequence[Offer], request: TravelRequest) -> list[Sco
         else:
             scores.append(Score(next(reported_points), f"{emissions:.1f} kg"))
     known = [score.points for score in scores if score is not None]
-    fallback = statistics.median(known) if known else NEUTRAL_POINTS
+    fallback = min(known) if known else NEUTRAL_POINTS
     return [
         score if score is not None else Score(fallback, "not reported", estimated=True)
         for score in scores

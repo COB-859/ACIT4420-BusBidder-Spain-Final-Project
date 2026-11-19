@@ -81,7 +81,7 @@ def _estimates(top: ScoredOffer, ranked: Sequence[ScoredOffer]) -> list[str]:
         else:
             lines.append(
                 f"Its {_label(name)} value is not reported, so its {_label(name)} points are "
-                "an estimate (the median of the offers that report a value)."
+                "set to the lowest points among the offers that report a value."
             )
     return lines
 

@@ -24,7 +24,7 @@ def three_offers():
         make_offer("B", serial=1, price=30, departure="2027-07-12T08:00", arrival="2027-07-12T14:00"),
         make_offer("S", serial=2, price=40, changeable=True,
                    departure="2027-07-12T10:00", arrival="2027-07-12T15:00"),
-        make_offer("F", serial=3, price=50, changeable=True, refundable=True,
+        make_offer("F", serial=3, price=50, changeable=True, refundable=True, refund_percent=90,
                    departure="2027-07-12T15:00", arrival="2027-07-12T22:00"),
     ]
 
@@ -138,11 +138,12 @@ class RankOffersTests(unittest.TestCase):
         # Points   price  duration  time  flex   total with 40/25/15/20
         # offer 1   100      50     100     0    40 + 12.5 + 15 + 0  = 67.5
         # offer 2    50     100     100    50    20 + 25 + 15 + 10   = 70.0
-        # offer 3     0       0      50   100     0 + 0 + 7.5 + 20   = 27.5
+        # offer 3     0       0      50    95     0 + 0 + 7.5 + 19   = 26.5
+        # Flexibility of offer 3: 50 for changeable + 50 x 90 percent refund = 95.
         ranked = rank_offers(three_offers(), REQUEST, SPEC_WEIGHTS)
         self.assertEqual(
             [(scored.offer.offer_id, scored.total) for scored in ranked],
-            [("SR-MAL-0002-S", 70.0), ("SR-MAL-0001-B", 67.5), ("SR-MAL-0003-F", 27.5)],
+            [("SR-MAL-0002-S", 70.0), ("SR-MAL-0001-B", 67.5), ("SR-MAL-0003-F", 26.5)],
         )
         best = ranked[0]
         self.assertEqual({name: score.points for name, score in best.scores.items()},
@@ -198,9 +199,9 @@ class RankOffersTests(unittest.TestCase):
 
 class TieTests(unittest.TestCase):
     def test_equal_totals_are_ordered_by_lower_price(self):
-        # Cheap and fixed against 5 euros dearer and fully flexible: 75 points each.
+        # Cheap and fixed against 5 euros dearer and fully flexible (a full refund): 75 points each.
         cheap = make_offer("B", serial=2, price=30)
-        flexible = make_offer("F", serial=1, price=35, changeable=True, refundable=True)
+        flexible = make_offer("F", serial=1, price=35, changeable=True, refundable=True, refund_percent=100)
         ranked = rank_offers([flexible, cheap], REQUEST, EQUAL_WEIGHTS)
         self.assertEqual([s.total for s in ranked], [75.0, 75.0])
         self.assertEqual([s.offer.offer_id for s in ranked], ["SR-MAL-0002-B", "SR-MAL-0001-F"])

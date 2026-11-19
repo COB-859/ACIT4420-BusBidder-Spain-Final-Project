@@ -118,9 +118,16 @@ class FixedScaleTests(unittest.TestCase):
             make_offer("S", refundable=True),
             make_offer("F", changeable=True, refundable=True),
         ]
-        self.assertEqual(points("flex", offers), [0, 50, 50, 100])
+        # make_offer gives a refundable ticket a refund of 80 percent: 50 x 0.8 = 40 points.
+        self.assertEqual(points("flex", offers), [0, 50, 40, 90])
         values = [score.value for score in CRITERIA["flex"].function(offers, REQUEST)]
-        self.assertEqual(values, ["fixed", "changeable", "refundable", "changeable + refundable"])
+        self.assertEqual(values, ["fixed", "changeable", "80% refund", "changeable + 80% refund"])
+
+    def test_flexibility_follows_the_refund_percentage(self):
+        offers = [make_offer("S", changeable=True, refundable=True, refund_percent=percent)
+                  for percent in (50, 90, 100)]
+        self.assertEqual(points("flex", offers), [75, 95, 100])
+
 
     def test_transfers(self):
         offers = [make_offer(transfers=count) for count in (0, 1, 2, 3)]
@@ -138,22 +145,23 @@ class EmissionsTests(unittest.TestCase):
     def test_lower_emissions_get_more_points(self):
         self.assertEqual(points("emissions", self.offers_with(9.0, 12.0, 15.0)), [100, 50, 0])
 
-    def test_missing_value_gets_the_median_of_the_others(self):
+    def test_missing_value_gets_the_lowest_points_of_the_others(self):
         offers = self.offers_with(9.0, None, 12.0, 15.0)
         scores = CRITERIA["emissions"].function(offers, REQUEST)
-        self.assertEqual([round(score.points) for score in scores], [100, 50, 50, 0])
+        self.assertEqual([round(score.points) for score in scores], [100, 0, 50, 0])
         self.assertTrue(scores[1].estimated)
         self.assertEqual(scores[1].value, "not reported")
         self.assertFalse(scores[0].estimated)
 
-    def test_missing_value_gets_the_median_and_not_the_mean(self):
-        # Reported points are 100, 80 and 0: the median is 80, the mean is 60.
+    def test_missing_value_never_scores_above_an_offer_that_reports(self):
+        # Reported points are 100, 80 and 0: the median would be 80.
         offers = self.offers_with(9.0, 10.2, 15.0, None)
-        self.assertEqual(points("emissions", offers), [100, 80, 0, 80])
+        self.assertEqual(points("emissions", offers), [100, 80, 0, 0])
 
-    def test_median_of_an_even_number_of_values(self):
-        offers = self.offers_with(9.0, 15.0, None)
-        self.assertEqual(points("emissions", offers), [100, 0, 50])
+    def test_missing_value_in_a_narrow_range_gets_the_lowest_points_not_zero(self):
+        # The range of 0.5 kg is below the minimum range of 1 kg, so the worst reporter keeps 50.
+        offers = self.offers_with(9.0, 9.5, None)
+        self.assertEqual(points("emissions", offers), [100, 50, 50])
 
     def test_no_offer_reports_a_value(self):
         offers = self.offers_with(None, None)
