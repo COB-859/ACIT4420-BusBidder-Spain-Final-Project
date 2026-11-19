@@ -149,6 +149,7 @@ python3 tools/exploratory_tests.py edge
 python3 tools/exploratory_tests.py rules
 python3 tools/exploratory_tests.py race
 python3 tools/exploratory_tests.py trials
+python3 tools/exploratory_tests.py alternatives
 ```
 
 | Part | What it does |
@@ -158,7 +159,17 @@ python3 tools/exploratory_tests.py trials
 | `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares the booking reference each traveller was told with the references that were saved. It counts the confirmations for a booking that was not saved, and the bookings that were saved although the traveller was told that saving failed. |
 | `trials` | Measures how stable and how even-handed the ranking is: how much each criterion really decides in the specification's example, which company each profile recommends over 60 requests (15 cities with 4 departure periods), and how often the first two offers are less than 1 point apart or exactly equal. |
 
-`edge`, `rules` and `trials` print the same result on every run. `race` depends on timing, so its result can differ between runs. The command ends with exit code 1 when `edge` finds a crash or `rules` finds a broken rule.
+| `alternatives` | Measures four choices of the scoring model against an alternative each, without changing the program: price on a relative scale against a fixed scale, how large a weight must be before the cheapest offer wins, where to draw the line for a near tie, and the median against the worst score for a missing emissions figure. |
+
+`edge`, `rules`, `trials` and `alternatives` print the same result on every run. `race` depends on timing, so its result can differ between runs. The command ends with exit code 1 when `edge` finds a crash or `rules` finds a broken rule.
+
+### Fault injection
+
+```bash
+python3 tools/fault_injection.py
+```
+
+This checks the tests themselves. In a temporary copy of the project it makes one small change to the program at a time, such as `<` into `<=` or `and` into `or`, runs the unit tests and notes whether a test failed. A change that no test notices is listed as a survivor. The changes are chosen by a fixed rule, so the result is the same on every run. It takes a few minutes, and the project itself is not changed.
 
 ## How offers are filtered and ranked
 
@@ -196,8 +207,9 @@ Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights a
 | `busbidder/logsetup.py` | Log file configuration. |
 | `busbidder/cli.py` | Commands, guided mode, exit codes. The only module that prints. |
 | `tools/generate_data.py` | Generator for the four main data files. Fixed seed. |
-| `tools/exploratory_tests.py` | Exploratory tests: unusual input, rules that must always hold, bookings at the same moment, and trials of the ranking. |
-| `tests/` | Unit tests, one file per module, one for the data generator and one for the feedback to the traveller (`test_feedback.py`), and `helpers.py` with small builders. |
+| `tools/exploratory_tests.py` | Exploratory tests: unusual input, rules that must always hold, bookings at the same moment, trials of the ranking, and design choices measured against alternatives. |
+| `tools/fault_injection.py` | Fault injection: changes the program one operator at a time in a copy and counts how many changes the tests notice. |
+| `tests/` | Unit tests, one file per module, one for the data generator, one for the feedback to the traveller (`test_feedback.py`) and one for exact limits found by fault injection (`test_boundaries.py`), and `helpers.py` with small builders. |
 
 ## Input files (in `data/`)
 
@@ -250,4 +262,6 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | `exploratory_edge_cases.txt` | `python3 tools/exploratory_tests.py edge > output/exploratory_edge_cases.txt` |
 | `exploratory_rules.txt` | `python3 tools/exploratory_tests.py rules > output/exploratory_rules.txt` |
 | `exploratory_trials.txt` | `python3 tools/exploratory_tests.py trials > output/exploratory_trials.txt` |
+| `exploratory_alternatives.txt` | `python3 tools/exploratory_tests.py alternatives > output/exploratory_alternatives.txt` |
+| `fault_injection.txt` | `python3 tools/fault_injection.py > output/fault_injection.txt` |
 | `exploratory_simultaneous_bookings.txt` | `python3 tools/exploratory_tests.py race > output/exploratory_simultaneous_bookings.txt`. The result depends on timing. |

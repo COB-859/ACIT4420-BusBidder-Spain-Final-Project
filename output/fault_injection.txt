@@ -1,49 +1,25 @@
 Faults injected: one change at a time, every 2th of 236 possible changes in 8 modules.
 
 Module         Injected  Caught  Survived
-booking              10       9         1
+booking              10      10         0
 constraints          23      23         0
-criteria              8       7         1
-explain               8       5         3
-loader                9       8         1
-models               37      33         4
-ranking              10       9         1
+criteria              8       8         0
+explain               8       7         1
+loader                9       9         0
+models               37      35         2
+ranking              10      10         0
 validation           13      13         0
-Total               118     107        11
+Total               118     115         3
 
-The tests caught 107 of 118 injected faults (91 percent).
+The tests caught 115 of 118 injected faults (97 percent).
 
 Survivors (a change no test noticed):
-  busbidder/booking.py:101
-      was:  self.path.parent.mkdir(parents=True, exist_ok=True)
-      made: self.path.parent.mkdir(parents=False, exist_ok=True)
-  busbidder/criteria.py:139
-      was:  value = "direct" if transfers == 0 else count_of(transfers, "transfer")
-      made: value = "direct" if transfers != 0 else count_of(transfers, "transfer")
-  busbidder/explain.py:57
-      was:  if top.scores[name].points >= DISADVANTAGE_BELOW_POINTS]
-      made: if top.scores[name].points > DISADVANTAGE_BELOW_POINTS]
   busbidder/explain.py:116
       was:  elif top.total != runner_up.total:
       made: elif top.total == runner_up.total:
-  busbidder/explain.py:133
-      was:  if score.points < DISADVANTAGE_BELOW_POINTS:
-      made: if score.points <= DISADVANTAGE_BELOW_POINTS:
-  busbidder/loader.py:268
-      was:  path.parent.mkdir(parents=True, exist_ok=True)
-      made: path.parent.mkdir(parents=False, exist_ok=True)
-  busbidder/models.py:124
-      was:  if self.emissions_kg is not None and self.emissions_kg < 0:
-      made: if self.emissions_kg is not None and self.emissions_kg <= 0:
   busbidder/models.py:254
       was:  inside = start <= moment <= end
       made: inside = start < moment <= end
   busbidder/models.py:256
       was:  inside = moment >= start or moment <= end
       made: inside = moment >= start or moment < end
-  busbidder/models.py:348
-      was:  if self.max_duration_minutes is not None and self.max_duration_minutes < 1:
-      made: if self.max_duration_minutes is not None and self.max_duration_minutes <= 1:
-  busbidder/ranking.py:126
-      was:  if len(ranked) < 2:
-      made: if len(ranked) <= 2:
