@@ -20,9 +20,9 @@ DEPARTURE_ID_PATTERN = re.compile(r"^(?P<company>[A-Z]{2})-(?P<destination>[A-Z]
 OFFER_ID_PATTERN = re.compile(r"^(?P<departure>[A-Z]{2}-[A-Z]{3}-\d{4})-(?P<fare>[BSF])$")
 # The reference leaves out I, O, 0 and 1 because they are easy to misread.
 BOOKING_REFERENCE_PATTERN = re.compile(r"^BB-(?P<date>\d{8})-(?P<code>[A-HJ-NP-Z2-9]{6})$")
-CLOCK_TIME_PATTERN = re.compile(r"^(?P<hour>[01]?\d|2[0-3]):(?P<minute>[0-5]\d)$")
-DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$")
-DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+CLOCK_TIME_PATTERN = re.compile(r"^(?P<hour>[01]?\d|2[0-3]):(?P<minute>[0-5]\d)$", re.ASCII)
+DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$", re.ASCII)
+DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$", re.ASCII)
 # int() and float() also accept forms such as 3_0, 1e5, nan and digits from
 # other scripts. A data file should hold plain numbers only.
 INTEGER_PATTERN = re.compile(r"^[+-]?\d+$", re.ASCII)

@@ -143,7 +143,7 @@ Why #1 ranks first:
   CL-MAL-0007-S (CostaLink, standard fare) ranks first with 65.82 points out of 100.
   Compared with the runner-up VB-MAL-0005-S (65.40 points), it gains most on price (38.19 EUR against 43.38 EUR, +10.42 points).
   The runner-up is better on flexibility (changeable + refundable against changeable, -10.00 points for the top offer).
-  Its largest contributions come from duration (6h 30m, 17.31 points) and departure (08:30, 15.00 points).
+  Of the criteria it scores well on, the largest contributions come from duration (6h 30m, 17.31 points) and departure (08:30, 15.00 points).
   Remaining disadvantage: flexibility (changeable scores 50.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
   Note: the first two offers are only 0.42 points apart, so a small change in the weights can change which one ranks first.

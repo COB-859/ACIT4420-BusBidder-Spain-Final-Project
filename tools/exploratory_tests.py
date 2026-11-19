@@ -276,7 +276,7 @@ def check_search_rules(rules: Rules, rng: random.Random, searches: int = 1000) -
         shuffled = offers[:]
         rng.shuffle(shuffled)
         again = rank_offers(filter_offers(shuffled, request, seats).accepted, request, weights)
-        rules.check("the ranking does not depend on the order of the data rows",
+        rules.check("the ranking does not depend on the order in which the offers are given",
                     order == [scored.offer.offer_id for scored in again])
         fractions = check_weights({name: weight / 100 for name, weight in weights.items()})
         rules.check("weights as fractions rank like weights as percentages",
@@ -295,7 +295,7 @@ def check_search_rules(rules: Rules, rng: random.Random, searches: int = 1000) -
             pricey = check_weights({"price": 55.0, "duration": 15.0, "time": 15.0, "flex": 15.0})
             before = rank_offers(result.accepted, request, even)[0].scores["price"].points
             after = rank_offers(result.accepted, request, pricey)[0].scores["price"].points
-            rules.check("more weight on price never picks a winner that is worse on price",
+            rules.check("raising the price weight from 25% to 55% never picks a winner that is worse on price",
                         after >= before - 1e-9, f"{before} -> {after}")
 
 
@@ -378,14 +378,19 @@ def explore_rules() -> int:
 
 def explore_simultaneous_bookings(rounds: int = 20, travellers: int = 8) -> int:
     """Start several bookings at once for a bus with 2 seats and compare what
-    the travellers were told with what was saved."""
+    each traveller was told with what was saved.
+
+    Booking references are compared, not counts: a count hides the case
+    where one traveller is told "confirmed" for a booking that is lost
+    while another is told "failed" for a booking that is saved.
+    """
     offer = "SR-VAL-0002-S"
     seats = load_all(DATA).departures["SR-VAL-0002"].seats
     print(f"{travellers} travellers each book 1 seat on {offer} at the same moment. The bus has {seats} seats.")
     print("The README states that the program is made for one user at a time.\n")
-    print(f"{'Round':<6}{'Told confirmed':>15}{'Bookings saved':>16}{'Told sold out':>15}"
-          f"{'Told not saved':>16}  Outcome")
-    lost = 0
+    print(f"{'Round':<6}{'Told':>10}{'Bookings':>10}{'Confirmed,':>12}{'Saved, but':>12}{'Told':>10}{'Told':>11}")
+    print(f"{'':<6}{'confirmed':>10}{'saved':>10}{'not saved':>12}{'told failed':>12}{'sold out':>10}{'not saved':>11}")
+    totals = {"lost": 0, "ghost": 0, "overbooked": 0, "clean": 0, "other": 0}
     for number in range(1, rounds + 1):
         with tempfile.TemporaryDirectory() as temp:
             command = [sys.executable, str(ROOT / "main.py"), "book", "--offer", offer,
@@ -394,26 +399,30 @@ def explore_simultaneous_bookings(rounds: int = 20, travellers: int = 8) -> int:
             running = [subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         text=True, cwd=temp) for _ in range(travellers)]
             printed = [process.communicate()[0] for process in running]
-            told = sum("BOOKING CONFIRMED" in text for text in printed)
+            confirmed = {reference for text in printed if "BOOKING CONFIRMED" in text
+                         for reference in REFERENCE.findall(text)[:1]}
             refused = sum("Not booked: this bus is sold out" in text for text in printed)
             not_saved = sum("cannot write bookings file" in text for text in printed)
-            unexplained = travellers - told - refused - not_saved
+            other = travellers - len(confirmed) - refused - not_saved
             saved_file = Path(temp) / "state" / "bookings.json"
-            saved = json.loads(saved_file.read_text(encoding="utf-8")) if saved_file.exists() else []
-            kept = sum(row["status"] == "confirmed" for row in saved)
-            if unexplained:
-                outcome = f"{unexplained} traveller(s) got another answer"
-            elif kept > seats:
-                outcome = "bus overbooked"
-            elif told > kept:
-                outcome = f"{told - kept} confirmation(s) for a booking that was not saved"
-            else:
-                outcome = "consistent"
-            lost += told - kept
-            print(f"{number:<6}{told:>15}{kept:>16}{refused:>15}{not_saved:>16}  {outcome}")
-    print(f"\nConfirmations given for bookings that were not saved, over {rounds} rounds: {lost}")
-    print("'Told not saved' is the error 'cannot write bookings file': that traveller is told "
-          "that nothing was booked.")
+            rows = json.loads(saved_file.read_text(encoding="utf-8")) if saved_file.exists() else []
+            saved = {row["reference"] for row in rows if row["status"] == "confirmed"}
+            lost = len(confirmed - saved)        # told confirmed, but the booking is not in the file
+            ghost = len(saved - confirmed)       # in the file and holding a seat, but the traveller was told it failed
+            totals["lost"] += lost
+            totals["ghost"] += ghost
+            totals["overbooked"] += len(saved) > seats
+            totals["other"] += other
+            totals["clean"] += not (lost or ghost or other or len(saved) > seats)
+            print(f"{number:<6}{len(confirmed):>10}{len(saved):>10}{lost:>12}{ghost:>12}{refused:>10}{not_saved:>11}")
+    print(f"\nOver {rounds} rounds:")
+    print(f"  rounds in which every traveller was told what was saved: {totals['clean']}")
+    print(f"  rounds in which the bus was overbooked: {totals['overbooked']}")
+    print(f"  travellers told 'confirmed' for a booking that was not saved: {totals['lost']}")
+    print(f"  bookings saved although the traveller was told it failed: {totals['ghost']}")
+    print(f"  travellers who got any other answer: {totals['other']}")
+    print("'Told not saved' is the error 'cannot write bookings file'. 'Saved, but told failed' counts the")
+    print("bookings among them that were saved all the same: they hold a seat the traveller does not know of.")
     return 0
 
 

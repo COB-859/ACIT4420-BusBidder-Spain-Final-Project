@@ -63,7 +63,8 @@ def _main_sources(top: ScoredOffer) -> list[str]:
         f"{_label(name)} ({top.scores[name].value}, {top.contributions[name]:.2f} points)"
         for name in largest
     ]
-    return ["Its largest contributions come from " + " and ".join(parts) + "."]
+    return ["Of the criteria it scores well on, the largest contributions come from "
+            + " and ".join(parts) + "."]
 
 
 def _estimates(top: ScoredOffer, ranked: Sequence[ScoredOffer]) -> list[str]:

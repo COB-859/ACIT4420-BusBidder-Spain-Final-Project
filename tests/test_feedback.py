@@ -13,9 +13,11 @@ from datetime import date
 from busbidder.cli import EXIT_ERROR, EXIT_OK, EXIT_USAGE, main, plain, to_number
 from busbidder.constraints import CONSTRAINTS, filter_offers
 from busbidder.display import format_filter, format_near_tie, format_ranking, format_seats_after
+from busbidder.exceptions import WeightError
 from busbidder.loader import LoadResult
 from busbidder.models import count_of
 from busbidder.ranking import NEAR_TIE_POINTS, check_weights, near_tie_gap, parse_weights, rank_offers
+from busbidder.validation import CLOCK_TIME_PATTERN, DATE_PATTERN, DATETIME_PATTERN
 from tests.helpers import make_departure, make_request
 from tests.test_cli import MALAGA, CliTestCase
 from tests.test_display import REQUEST, text_of
@@ -242,6 +244,9 @@ class CommandFeedbackTests(CliTestCase):
         cases = (
             (["--passengers", "1_0"], "Error: argument --passengers: must be a whole number: '1_0'."),
             (["--budget", "4_0"], "Error: argument --budget: must be a number: '4_0'."),
+            (["--budget", "1e2"], "Error: argument --budget: must be a number: '1e2'."),
+            (["--budget", "nan"], "Error: argument --budget: must be a number: 'nan'."),
+            (["--budget", "inf"], "Error: argument --budget: must be a number: 'inf'."),
             (["--max-transfers", "1_"], "Error: argument --max-transfers: must be a whole number: '1_'."),
             (["--min-luggage", "2_0"], "Error: argument --min-luggage: must be a whole number: '2_0'."),
         )
@@ -256,6 +261,10 @@ class CommandFeedbackTests(CliTestCase):
             to_number("1_0", int, 1, "passengers")
         self.assertEqual(str(caught.exception), "passengers must be a number")
         self.assertEqual(to_number("10", int, 1, "passengers"), 10)
+        for text in ("1e2", "4_0", "nan", "inf", "fifty"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                to_number(text, float, 0.01, "budget")
+        self.assertEqual(to_number("49.5", float, 0.01, "budget"), 49.5)
 
     def test_a_refundable_ticket_of_the_same_type_is_not_called_non_refundable(self):
         # "standard tickets are not refundable" would be false: one company
@@ -265,6 +274,40 @@ class CommandFeedbackTests(CliTestCase):
         _code, text = self.run_main("cancel", "--ref", reference)
         self.assertIn("No refund, because this standard ticket is not refundable.", text)
         self.assertNotIn("standard tickets are", text)
+
+    def test_a_weight_must_be_a_plain_number(self):
+        # float() would read 4_0 as 40, 1e2 as 100 and accept nan.
+        for text in ("price=4_0,duration=25,time=15,flex=20", "price=1e2", "price=nan", "price=4 0", "price=%"):
+            with self.subTest(text=text), self.assertRaises(WeightError) as caught:
+                parse_weights(text)
+            self.assertIn("weight for price is not a number", str(caught.exception))
+        self.assertEqual(parse_weights("price=40.5%, duration=.5"), {"price": 40.5, "duration": 0.5})
+        code, text = self.run_main("search", *MALAGA, "--weights", "price=4_0,duration=25,time=15,flex=20")
+        self.assertEqual(code, EXIT_ERROR)
+        self.assertIn("Error: weight for price is not a number: '4_0'", text)
+
+    def test_a_result_is_not_saved_into_the_data_folder(self):
+        # Saving there could replace an input file, such as fares.csv.
+        fares = self.data_dir / "fares.csv"
+        before = fares.read_text(encoding="utf-8")
+        for command, extra in (("search", ["--profile", "budget"]), ("compare", [])):
+            with self.subTest(command=command):
+                code, text = self.run_main(command, *MALAGA, *extra, "--save", str(fares))
+                self.assertEqual(code, EXIT_ERROR)
+                self.assertIn("the result cannot be saved in the data folder", text)
+                self.assertNotIn("#1", text)
+        self.assertEqual(fares.read_text(encoding="utf-8"), before)
+        code, _text = self.run_main("search", *MALAGA, "--profile", "budget",
+                                    "--save", str(self.folder / "elsewhere" / "result.txt"))
+        self.assertEqual(code, EXIT_OK)
+
+    def test_dates_and_times_use_plain_digits_only(self):
+        # Digits from other scripts pass \d unless the pattern is limited to ASCII.
+        self.assertIsNone(DATE_PATTERN.match("２０２７-07-12"))
+        self.assertIsNone(CLOCK_TIME_PATTERN.match("0٣:30"))
+        self.assertIsNone(DATETIME_PATTERN.match("2027-07-12T0٣:30"))
+        self.assertIsNotNone(DATE_PATTERN.match("2027-07-12"))
+        self.assertIsNotNone(CLOCK_TIME_PATTERN.match("08:30"))
 
     def test_zero_passengers_keeps_its_own_message(self):
         code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--passengers", "0")

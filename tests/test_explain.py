@@ -43,12 +43,12 @@ class ExplainTests(unittest.TestCase):
         # Offer 2 contributions: duration 25, price 20, departure 15, flexibility 10.
         # Price has only 50 points, so it is not named as a strength.
         text = explanation(three_offers())
-        self.assertIn("Its largest contributions come from duration (5h 00m, 25.00 points) "
+        self.assertIn("Of the criteria it scores well on, the largest contributions come from duration (5h 00m, 25.00 points) "
                       "and departure (10:00, 15.00 points).", text)
 
     def test_a_criterion_is_never_both_a_strength_and_the_disadvantage(self):
         text = explanation(three_offers())
-        strengths = next(line for line in text.splitlines() if line.startswith("Its largest"))
+        strengths = next(line for line in text.splitlines() if line.startswith("Of the criteria it scores well on"))
         self.assertIn("Remaining disadvantage: price", text)
         self.assertNotIn("price", strengths)
 
@@ -61,8 +61,8 @@ class ExplainTests(unittest.TestCase):
         ]
         weights = {"price": 1, "duration": 1, "time": 49, "flex": 49}
         text = explanation(offers, weights=weights)
-        self.assertIn("Its largest contributions come from price", text)
-        self.assertNotIn("departure (15:30", text.split("Its largest")[1].splitlines()[0])
+        self.assertIn("Of the criteria it scores well on, the largest contributions come from price", text)
+        self.assertNotIn("departure (15:30", text.split("Of the criteria it scores well on")[1].splitlines()[0])
 
     def test_never_claims_to_be_objectively_best(self):
         text = explanation(three_offers())

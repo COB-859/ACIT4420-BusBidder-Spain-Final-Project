@@ -1,7 +1,7 @@
  Checks  Result  Rule
    1000  held    no offer is lost: kept + removed = offers for the city and dates
    1000  held    the ranking is ordered best first
-   1000  held    the ranking does not depend on the order of the data rows
+   1000  held    the ranking does not depend on the order in which the offers are given
    1000  held    weights as fractions rank like weights as percentages
     605  held    a higher budget never removes an offer
    1000  held    more passengers never add an offer
@@ -9,7 +9,7 @@
   16097  held    criterion points are between 0 and 100
   16097  held    the total is the sum of the contributions
   16097  held    the total is between 0 and 100
-    791  held    more weight on price never picks a winner that is worse on price
+    791  held    raising the price weight from 25% to 55% never picks a winner that is worse on price
     477  held    a refused action changes nothing in the bookings file
     600  held    booking references are unique
      68  held    a booking reference has the right format

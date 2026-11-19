@@ -217,7 +217,6 @@ class SearchTests(CliTestCase):
             ([*MALAGA[:7], "brunch", "--profile", "budget"], "preferred departure must be one of"),
             ([*MALAGA, "--profile", "budget", "--passengers", "0"], "passengers must be at least 1"),
             ([*MALAGA, "--profile", "budget", "--budget", "-5"], "budget must be a number above 0"),
-            ([*MALAGA, "--profile", "budget", "--budget", "nan"], "budget must be a number above 0"),
             ([*MALAGA, "--profile", "luxury"], "unknown profile"),
             ([*MALAGA, "--weights", "price=100"], "must use price, duration, time and flex"),
             ([*MALAGA, "--weights", "price=40,duration=25,time=15,flex=10"], "must total 100"),

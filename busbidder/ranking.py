@@ -14,6 +14,7 @@ from numbers import Real
 from busbidder.criteria import CORE_CRITERIA, CRITERIA, Score
 from busbidder.exceptions import WeightError
 from busbidder.models import Offer, TravelRequest
+from busbidder.validation import DECIMAL_PATTERN
 
 PERCENT_TOTAL = 100.0
 PERCENT_TOLERANCE = 0.01
@@ -33,11 +34,13 @@ def parse_weights(text: str) -> dict[str, float]:
             raise WeightError(f"weights must be written as name=number, separated by commas: {part.strip()!r}")
         if name in weights:
             raise WeightError(f"weight given twice: {name}")
-        try:
-            # "40%" means the same as "40": weights are percentages.
-            weights[name] = float(number.strip().removesuffix("%"))
-        except ValueError:
-            raise WeightError(f"weight for {name} is not a number: {number.strip()!r}") from None
+        # "40%" means the same as "40": weights are percentages. The number
+        # itself must be a plain one, as in the data files: float() would
+        # also accept 4_0, 1e2 and nan.
+        plain_number = number.strip().removesuffix("%").strip()
+        if not DECIMAL_PATTERN.match(plain_number):
+            raise WeightError(f"weight for {name} is not a number: {number.strip()!r}")
+        weights[name] = float(plain_number)
     return weights
 
 

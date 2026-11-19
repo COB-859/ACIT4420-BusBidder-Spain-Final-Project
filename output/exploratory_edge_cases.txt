@@ -83,12 +83,14 @@
 25. budget -5  [exit code 1]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget -5
     feedback: Error: budget must be a number above 0: -5
-26. budget 'nan'  [exit code 1]
+26. budget 'nan'  [exit code 2]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget nan
-    feedback: Error: budget must be a number above 0: nan
-27. budget 'inf'  [exit code 1]
+    feedback: Error: argument --budget: must be a number: 'nan'.
+    feedback: Run 'python3 main.py search --help' to see the options.
+27. budget 'inf'  [exit code 2]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget inf
-    feedback: Error: budget must be a number above 0: inf
+    feedback: Error: argument --budget: must be a number: 'inf'.
+    feedback: Run 'python3 main.py search --help' to see the options.
 28. budget of 1 EUR  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget 1
     feedback: Offers left to rank: 0

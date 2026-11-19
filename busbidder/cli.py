@@ -52,7 +52,7 @@ from busbidder.ranking import (
     rank_offers,
     require_intended_dominance,
 )
-from busbidder.validation import parse_date
+from busbidder.validation import DECIMAL_PATTERN, parse_date
 
 logger = logging.getLogger("busbidder.cli")
 
@@ -163,6 +163,15 @@ def find_profile(key: str, profiles: Mapping[str, TravellerProfile]) -> Travelle
     return profiles[key]
 
 
+def refuse_data_folder(save: Path | None, data: Path) -> None:
+    """Refuse to save a result in the data folder, where it could replace an input file."""
+    if save is not None and save.resolve().parent == data.resolve():
+        raise InvalidRequestError(
+            f"the result cannot be saved in the data folder ({data}), because that could "
+            "replace an input file. Choose another place"
+        )
+
+
 def emit(lines: Sequence[str], save: Path | None = None) -> None:
     """Print the lines, and also write them to a file when asked."""
     text = "\n".join(lines)
@@ -259,6 +268,7 @@ def search_report(
 
 def run_search(args: argparse.Namespace) -> int:
     """Filter and rank the offers for one request and one set of weights."""
+    refuse_data_folder(args.save, args.data)
     # Typed weights do not use the profiles file, so it need not be there.
     session = open_session(args, need_profiles=args.weights is None)
     request = request_from_args(args, session)
@@ -274,6 +284,7 @@ def run_search(args: argparse.Namespace) -> int:
 
 def run_compare(args: argparse.Namespace) -> int:
     """Rank the same offers under every profile and show the top offers side by side."""
+    refuse_data_folder(args.save, args.data)
     session = open_session(args)
     request = request_from_args(args, session)
     keys = args.profiles or list(session.profiles)
@@ -360,12 +371,11 @@ def optional(convert: Callable[[str], object]) -> Callable[[str], object]:
 
 def to_number(text: str, kind: type, minimum: float, what: str):
     """Return the answer as a number of the given kind, at least minimum."""
-    try:
-        if "_" in text:
-            raise ValueError
-        number = kind(text)
-    except ValueError:
-        raise ValueError(f"{what} must be a number") from None
+    # A plain number only, as in the data files and on the command line.
+    pattern = PLAIN_INTEGER if kind is int else DECIMAL_PATTERN
+    if not pattern.fullmatch(text.strip()):
+        raise ValueError(f"{what} must be a number")
+    number = kind(text)
     if not math.isfinite(number):
         raise ValueError(f"{what} must be a number")
     if number < minimum:
@@ -532,13 +542,14 @@ def whole_number(minimum: int | None = None) -> Callable[[str], int]:
 
 
 def amount(text: str) -> float:
-    """Return an amount typed on the command line as a number."""
-    if "_" in text:
+    """Return an amount typed on the command line as a number.
+
+    The text must be a plain number, as in the data files: float() would
+    also accept 4_0, 1e2, nan and inf.
+    """
+    if not DECIMAL_PATTERN.match(text.strip()):
         raise argparse.ArgumentTypeError(f"must be a number: {text!r}")
-    try:
-        return float(text)
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"must be a number: {text!r}") from None
+    return float(text)
 
 
 def _add_folder_options(parser: argparse.ArgumentParser, top_level: bool) -> None:

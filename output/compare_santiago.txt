@@ -39,7 +39,7 @@ Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
   NV-SCO-0004-B (NocheVia, basic fare) ranks first with 79.61 points out of 100.
   Compared with the runner-up NV-SCO-0002-B (77.32 points), it gains most on duration (7h 40m against 8h 00m, +1.62 points) and departure (23:45 against 21:30, +0.83 points).
   The runner-up is better on price (29.03 EUR against 29.13 EUR, -0.16 points for the top offer).
-  Its largest contributions come from price (29.13 EUR, 50.69 points) and departure (23:45, 10.00 points).
+  Of the criteria it scores well on, the largest contributions come from price (29.13 EUR, 50.69 points) and departure (23:45, 10.00 points).
   Remaining disadvantage: flexibility (fixed scores 0.0 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -59,7 +59,7 @@ Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
   CE-SCO-0011-S (Camino Express, standard fare) ranks first with 80.57 points out of 100.
   Compared with the runner-up NV-SCO-0004-S (75.78 points), it gains most on duration (6h 25m against 7h 40m, +14.19 points).
   The runner-up is better on price (34.96 EUR against 58.02 EUR, -6.90 points for the top offer).
-  Its largest contributions come from duration (6h 25m, 35.00 points) and departure (06:30, 27.50 points).
+  Of the criteria it scores well on, the largest contributions come from duration (6h 25m, 35.00 points) and departure (06:30, 27.50 points).
   Remaining disadvantage: price (58.02 EUR scores 5.7 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -78,7 +78,7 @@ Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
   VB-SCO-0005-S (VerdeBus, standard fare) ranks first with 73.68 points out of 100.
   Compared with the runner-up VB-SCO-0006-S (73.45 points), it gains most on price (47.12 EUR against 49.86 EUR, +1.64 points) and departure (09:00 against 09:15, +0.62 points).
   The runner-up is better on duration (7h 20m against 7h 45m, -2.03 points for the top offer).
-  Its largest contributions come from flexibility (changeable + refundable, 50.00 points).
+  Of the criteria it scores well on, the largest contributions come from flexibility (changeable + refundable, 50.00 points).
   Remaining disadvantage: price (47.12 EUR scores 38.3 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
   Note: the first two offers are only 0.23 points apart, so a small change in the weights can change which one ranks first.
@@ -99,7 +99,7 @@ Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
   VB-SCO-0006-S (VerdeBus, standard fare) ranks first with 76.15 points out of 100.
   Compared with the runner-up VB-SCO-0005-S (73.07 points), it gains most on emissions (9.9 kg against 10.6 kg, +3.11 points) and duration (7h 20m against 7h 45m, +2.03 points).
   The runner-up is better on price (47.12 EUR against 49.86 EUR, -1.64 points for the top offer).
-  Its largest contributions come from emissions (9.9 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
+  Of the criteria it scores well on, the largest contributions come from emissions (9.9 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
   Remaining disadvantage: price (49.86 EUR scores 30.2 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 

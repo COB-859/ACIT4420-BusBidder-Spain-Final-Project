@@ -108,9 +108,9 @@ Every action says whether it worked and what changed. A search, a comparison, a 
 | `--changeable`, `--refundable` | Mandatory: the ticket must be changeable or refundable. |
 | `--min-luggage` | Mandatory: lowest luggage allowance in kg. |
 | `--allow-dominant` | Accept weights where one criterion counts for more than 70%. Without it such weights are refused, so one criterion cannot dominate by accident. |
-| `--save FILE` | Also write the result to a file. |
+| `--save FILE` | Also write the result to a file. A file in the data folder is refused, because it could replace an input file. |
 | `--profile KEY` | `search` only. One of `budget`, `business`, `flexible`, `eco` (from `data/profiles.json`). |
-| `--weights TEXT` | `search` only, instead of `--profile`. For example `price=40,duration=25,time=15,flex=20`. A percent sign is allowed: `price=40%`. |
+| `--weights TEXT` | `search` only, instead of `--profile`. For example `price=40,duration=25,time=15,flex=20`. A percent sign is allowed: `price=40%`. Each weight must be a plain number, so `4_0` and `1e2` are refused. |
 | `--top N` | `search` only. Show only the first N ranked offers. By default, or with `--top 0`, every ranked offer is shown. |
 | `--show-removed` | `search` only. List every removed offer with the reasons. |
 | `--profiles KEY ...` | `compare` only. The profiles to compare. Default: all. |
@@ -155,7 +155,7 @@ python3 tools/exploratory_tests.py trials
 |---|---|
 | `edge` | Runs 75 unusual commands, such as a date that does not exist, 1000 passengers or a booking on a full bus, and prints the exit code and the feedback for each. |
 | `rules` | Runs 1,000 random searches, 600 random bookings and cancellations and 1,500 random command lines, and checks rules that must hold for any input, for example that every ranked offer meets every mandatory condition (each of them is set in part of the random searches) and that a bus never has more seats booked than it has. |
-| `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares what the travellers were told with what was saved. |
+| `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares the booking reference each traveller was told with the references that were saved. It counts the confirmations for a booking that was not saved, and the bookings that were saved although the traveller was told that saving failed. |
 | `trials` | Measures how stable and how even-handed the ranking is: how much each criterion really decides in the specification's example, which company each profile recommends over 60 requests (15 cities with 4 departure periods), and how often the first two offers are less than 1 point apart or exactly equal. |
 
 `edge`, `rules` and `trials` print the same result on every run. `race` depends on timing, so its result can differ between runs. The command ends with exit code 1 when `edge` finds a crash or `rules` finds a broken rule.
@@ -230,7 +230,7 @@ python3 tools/generate_data.py
 | `logs/busbidder.log` | Commands, load counts, rejected rows, sold-out departures, searches, bookings, cancellations and errors. |
 | `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. The file is checked when it is read, so a hand-edited value that is not valid stops the command with an error. |
 
-The program is made for one user at a time. Two copies of the program that book at the same moment can overwrite each other's booking.
+The program is made for one user at a time. Two copies of the program that book at the same moment can overwrite each other's booking: a traveller can be told that a booking is confirmed when it was not saved, or that saving failed when the booking was saved. `output/exploratory_simultaneous_bookings.txt` shows how often.
 
 ## Example output (in `output/`)
 
