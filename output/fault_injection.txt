@@ -4,19 +4,16 @@ Module         Injected  Caught  Survived
 booking              10      10         0
 constraints          23      23         0
 criteria              8       8         0
-explain               8       7         1
+explain               8       8         0
 loader                9       9         0
 models               37      35         2
 ranking              10      10         0
 validation           13      13         0
-Total               118     115         3
+Total               118     116         2
 
-The tests caught 115 of 118 injected faults (97 percent).
+The tests caught 116 of 118 injected faults (98 percent).
 
 Survivors (a change no test noticed):
-  busbidder/explain.py:116
-      was:  elif top.total != runner_up.total:
-      made: elif top.total == runner_up.total:
   busbidder/models.py:254
       was:  inside = start <= moment <= end
       made: inside = start < moment <= end

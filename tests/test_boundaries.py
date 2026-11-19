@@ -90,6 +90,17 @@ class ExplanationLimitTests(unittest.TestCase):
         self.assertNotIn("largest contributions come from price", text)
 
 
+class ExactTieTests(unittest.TestCase):
+    def test_an_exact_tie_is_explained_by_the_tie_rule_only(self):
+        # Two offers that differ only in their ID have the same total.
+        twins = [make_offer("B", serial=1), make_offer("B", serial=2)]
+        ranked = rank_offers(twins, REQUEST, check_weights(SPEC_WEIGHTS))
+        self.assertEqual(ranked[0].total, ranked[1].total)
+        text = "\n".join(explain_top(ranked))
+        self.assertIn("It has the same total as", text)
+        self.assertNotIn("It is ahead of", text)
+
+
 class NewFolderTests(unittest.TestCase):
     """A file can be written into a folder whose parent does not exist yet."""
 
