@@ -34,12 +34,12 @@ Ranked offers, best first (value, points, weight, contribution)
     Departure   08:30                      100.0 pts x    10% =  10.00
     Flexibility changeable                  50.0 pts x    20% =  10.00
 
-#3  VB-MAL-0005-S  VerdeBus, standard fare   TOTAL 60.21
-    Wed 14 Jul 10:15 -> 16:45 (6h 30m), direct, 7 seats left, luggage 20 kg
-    Price       43.38 EUR                   32.7 pts x    50% =  16.37
+#3  CL-MAL-0009-S  CostaLink, standard fare   TOTAL 58.22
+    Wed 14 Jul 09:15 -> 15:45 (6h 30m), direct, 13 seats left, luggage 20 kg
+    Price       40.19 EUR                   48.7 pts x    50% =  24.37
     Duration    6h 30m                      69.2 pts x    20% =  13.85
-    Departure   10:15                      100.0 pts x    10% =  10.00
-    Flexibility changeable + refundable    100.0 pts x    20% =  20.00
+    Departure   09:15                      100.0 pts x    10% =  10.00
+    Flexibility changeable                  50.0 pts x    20% =  10.00
 
 Showing 3 of 17 ranked offers. Use --top 0 to show all.
 

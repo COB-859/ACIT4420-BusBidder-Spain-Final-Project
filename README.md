@@ -162,7 +162,7 @@ python3 tools/exploratory_tests.py alternatives
 | `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares the booking reference each traveller was told with the references that were saved. It counts the confirmations for a booking that was not saved, and the bookings that were saved although the traveller was told that saving failed. |
 | `trials` | Measures how stable and how even-handed the ranking is: how much each criterion really decides in the specification's example, which company each profile recommends over 60 requests (15 cities with 4 departure periods), and how often the first two offers are less than 1 point apart or exactly equal. |
 
-| `alternatives` | Measures four choices of the scoring model against an alternative each, without changing the program: price on a relative scale against a fixed scale, how large a weight must be before the cheapest offer wins, where to draw the line for a near tie, and the median against the worst score for a missing emissions figure. |
+| `alternatives` | Measures choices of the scoring model against an alternative each, without changing the program: price on a relative scale against a fixed scale, how large a weight must be before the cheapest offer wins, where to draw the line for a near tie, and how often the winner changes when the weights move by 10 points. Two parts compare a rule the program has now with the rule it had before the measurement: the lowest reported points against the median for a missing emissions figure, and the refund percentage against refundable yes or no for flexibility. |
 
 `edge`, `rules`, `trials` and `alternatives` print the same result on every run. `race` depends on timing, so its result can differ between runs. The command ends with exit code 1 when `edge` finds a crash or `rules` finds a broken rule.
 
@@ -185,10 +185,10 @@ This checks the tests themselves. In a temporary copy of the project it makes on
 | Price | `price` | Compared with the other offers left: the cheapest gets 100, the dearest 0. A range under 5 EUR is not stretched further. |
 | Duration | `duration` | Compared with the other offers left, with a minimum range of 30 minutes. |
 | Departure convenience | `time` | 100 inside the preferred time band, falling to 0 six hours outside it. |
-| Flexibility | `flex` | 50 for a changeable ticket plus 50 for a refundable one. |
+| Flexibility | `flex` | 50 for a changeable ticket, plus 50 multiplied by the share of the price the ticket refunds: a 90 percent refund gives 45, a 50 percent refund 25. |
 | Transfers | `transfers` | Direct 100, one transfer 50, more 0. Optional. |
 | Rating | `rating` | The company's rating from 1 to 5 on a fixed scale. Optional. |
-| Emissions | `emissions` | Compared with the other offers left. With a minimum range of 1 kg. A missing value gets the median of the points of the offers that report one, and is marked "estimated". If no offer reports a value, every offer gets 50. Optional. |
+| Emissions | `emissions` | Compared with the other offers left. With a minimum range of 1 kg. A missing value gets the lowest points among the offers that report one, so not reporting never scores above reporting, and is marked "estimated". If no offer reports a value, every offer gets 50. Optional. |
 
 Total = sum of (weight / 100) x points, so the total is also 0 to 100. Weights are percentages that total 100, or fractions that total 1.0. The four criteria `price`, `duration`, `time` and `flex` must each have a weight above 0. Equal totals are ordered by lower price, then earlier departure, then offer ID.
 
@@ -260,7 +260,7 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | `compare_santiago.txt` | `python3 main.py compare --destination "Santiago de Compostela" --date-from 2027-07-10 --date-to 2027-07-16 --depart night --budget 60 --passengers 2 --save output/compare_santiago.txt` |
 | `sensitivity_price_30.txt` | The `search_spec_example` command with `--weights price=30,duration=30,time=20,flex=20 --top 3` |
 | `sensitivity_price_50.txt` | The `search_spec_example` command with `--weights price=50,duration=20,time=10,flex=20 --top 3` |
-| `log_extract.txt` | Part of `logs/busbidder.log`: the whole `validate` run, then one line per command, search, comparison, booking, cancellation and error from the runs above and from six further commands (an unknown city, weights that total 110, a booking, a booking on a full bus, a cancellation and a second cancellation of the same booking). |
+| `log_extract.txt` | Part of `logs/busbidder.log`: the whole `validate` run, then one line per command, search, comparison, booking, change, cancellation and error from the runs above and from eight further commands (an unknown city, weights that total 110, a booking, the booking list, a booking on a full bus, a change, a cancellation and a second cancellation of the same booking). |
 | `rejected_records.txt` | Written by every run. |
 | `exploratory_edge_cases.txt` | `python3 tools/exploratory_tests.py edge > output/exploratory_edge_cases.txt` |
 | `exploratory_rules.txt` | `python3 tools/exploratory_tests.py rules > output/exploratory_rules.txt` |

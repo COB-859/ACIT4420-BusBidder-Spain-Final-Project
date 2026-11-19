@@ -515,10 +515,11 @@ def _gap(order: list[tuple[str, float]]) -> float:
 
 
 def explore_alternatives() -> int:
-    """Measure three choices of the scoring model against an alternative each.
+    """Measure choices of the scoring model against an alternative each.
 
     The program is not changed: the alternative totals are calculated here
-    from the points the program gives.
+    from the points the program gives. Parts 4 and 5 compare a rule the
+    program has now with the rule it had before this measurement.
     """
     data = load_all(DATA)
     profiles = {key: check_weights(profile.weights) for key, profile in load_profiles(DATA / PROFILES_FILE).items()}
@@ -591,30 +592,82 @@ def explore_alternatives() -> int:
         print(f"   first two offers more than 0 and less than {limit:g} points apart: "
               f"{sum(0 < gap < limit for gap in gaps):>3} of {len(gaps)}")
 
-    print("\n4. A missing emissions figure: the median (the program) against the worst score")
-    print("   The 60 requests without a budget, environment profile (emissions 40 percent).")
+    print("\n4. A missing emissions figure: the lowest reported points (the program) against the median")
+    print("   The median was the program's rule before it was measured here. The 60 requests without")
+    print("   a budget, environment profile (emissions 40 percent).")
     eco = profiles["eco"]
-    best_median, best_worst, sizes, overtaken = [], [], [], 0
+    best_lowest, best_median, sizes, below_lowest, below_median = [], [], [], 0, 0
     for city in cities:
         for period in PERIODS:
             ranked = ranking(city, period, eco)
             missing = {scored.offer.offer_id for scored in ranked if scored.scores["emissions"].estimated}
             if not missing:
                 continue
-            worst = _rerank(ranked, eco, "emissions",
-                            lambda scored: 0.0 if scored.scores["emissions"].estimated else scored.scores["emissions"].points)
-            median_order = [scored.offer.offer_id for scored in ranked]
-            worst_order = [offer_id for offer_id, _total in worst]
+            median = statistics.median(scored.scores["emissions"].points for scored in ranked
+                                       if not scored.scores["emissions"].estimated)
+            with_median = _rerank(ranked, eco, "emissions",
+                                  lambda scored: median if scored.scores["emissions"].estimated
+                                  else scored.scores["emissions"].points)
+            lowest_order = [scored.offer.offer_id for scored in ranked]
+            median_order = [offer_id for offer_id, _total in with_median]
+            best_lowest.append(1 + min(lowest_order.index(offer_id) for offer_id in missing))
             best_median.append(1 + min(median_order.index(offer_id) for offer_id in missing))
-            best_worst.append(1 + min(worst_order.index(offer_id) for offer_id in missing))
             sizes.append(len(ranked))
             # Offers that report a figure and still rank below the best offer that reports none.
-            overtaken += sum(1 for offer_id in median_order[best_median[-1]:] if offer_id not in missing)
+            below_lowest += sum(1 for offer_id in lowest_order[best_lowest[-1]:] if offer_id not in missing)
+            below_median += sum(1 for offer_id in median_order[best_median[-1]:] if offer_id not in missing)
     print(f"   Rankings that hold an offer without a figure: {len(sizes)} of {len(cities) * len(PERIODS)}, "
           f"with {statistics.mean(sizes):.0f} offers on average")
-    print(f"   Best rank of an offer without a figure, on average: median {statistics.mean(best_median):.1f}, "
-          f"worst score {statistics.mean(best_worst):.1f}")
-    print(f"   With the median, {overtaken / len(sizes):.0f} offers that report a figure rank below it on average.")
+    print(f"   {'':<62}{'Lowest':>8}{'Median':>8}")
+    print(f"   {'Best rank of an offer without a figure, on average':<62}"
+          f"{statistics.mean(best_lowest):>8.1f}{statistics.mean(best_median):>8.1f}")
+    print(f"   {'Offers with a figure that rank below it, on average':<62}"
+          f"{below_lowest / len(sizes):>8.0f}{below_median / len(sizes):>8.0f}")
+
+    print("\n5. Flexibility: the refund percentage (the program) against refundable yes or no")
+    print("   Yes or no was the program's rule before: 50 points for a refundable ticket, whatever")
+    print("   it refunds. Now the 50 points are multiplied by the refund percentage.")
+    print("   The 60 requests without a budget, 4 profiles: 240 rankings.")
+    yes_no = lambda scored: 50.0 * scored.offer.fare.changeable + 50.0 * scored.offer.fare.refundable
+    partial = lambda offer_id: 0 < fares[offer_id].refund_percent < 90
+    fares = {offer.offer_id: offer.fare for offer in offers}
+    same = near_now = near_before = partial_now = partial_before = count = 0
+    for weights in profiles.values():
+        for city in cities:
+            for period in PERIODS:
+                ranked = ranking(city, period, weights)
+                now = [(scored.offer.offer_id, scored.total) for scored in ranked]
+                before = _rerank(ranked, weights, "flex", yes_no)
+                count += 1
+                same += now[0][0] == before[0][0]
+                near_now += 0 < _gap(now) < 1
+                near_before += 0 < _gap(before) < 1
+                partial_now += partial(now[0][0])
+                partial_before += partial(before[0][0])
+    print(f"   {'':<62}{'Percent':>8}{'Yes/no':>8}")
+    print(f"   {'A ticket that refunds less than 90 percent ranks first':<62}{partial_now:>8}{partial_before:>8}")
+    print(f"   {'First two offers more than 0 and less than 1 point apart':<62}{near_now:>8}{near_before:>8}")
+    print(f"   The two rules recommend the same offer in {same} of {count} rankings.")
+
+    print("\n6. How often does the winner change when the weights move by 10 points?")
+    print("   The 60 requests without a budget. Base: price 40, duration 25, departure 15,")
+    print("   flexibility 20. Price down: 30, 30, 20, 20. Price up: 50, 20, 10, 20.")
+    names = ("price", "duration", "time", "flex")
+    base, down, up = (check_weights(dict(zip(names, values)))
+                      for values in ((40.0, 25.0, 15.0, 20.0), (30.0, 30.0, 20.0, 20.0), (50.0, 20.0, 10.0, 20.0)))
+    changed_down = changed_up = changed_any = count = 0
+    for city in cities:
+        for period in PERIODS:
+            winner = ranking(city, period, base)[0].offer.offer_id
+            other_down = ranking(city, period, down)[0].offer.offer_id != winner
+            other_up = ranking(city, period, up)[0].offer.offer_id != winner
+            count += 1
+            changed_down += other_down
+            changed_up += other_up
+            changed_any += other_down or other_up
+    print(f"   Another winner with price at 30: {changed_down} of {count}")
+    print(f"   Another winner with price at 50: {changed_up} of {count}")
+    print(f"   Another winner in at least one of the two: {changed_any} of {count}")
     return 0
 
 

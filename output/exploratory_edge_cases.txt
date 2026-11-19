@@ -127,7 +127,6 @@
 35. the specification's example request  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --budget 50 --max-transfers 1 --changeable --weights price=40,duration=25,time=15,flex=20 --top 1
     feedback: Offers left to rank: 17
-    feedback: Note: the first two offers are only 0.42 points apart, so a small change in the weights can change which one ranks first.
 36. 999 kg of luggage  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --min-luggage 999
     feedback: Offers left to rank: 0
@@ -146,12 +145,15 @@
 39. weights as fractions  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=0.4,duration=0.25,time=0.15,flex=0.2
     feedback: Offers left to rank: 45
+    feedback: Note: the first two offers are only 0.02 points apart, so a small change in the weights can change which one ranks first.
 40. weights with percent signs  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=40%,duration=25%,time=15%,flex=20%
     feedback: Offers left to rank: 45
+    feedback: Note: the first two offers are only 0.02 points apart, so a small change in the weights can change which one ranks first.
 41. weights with spaces  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights 'price = 40, duration = 25, time = 15, flex = 20'
     feedback: Offers left to rank: 45
+    feedback: Note: the first two offers are only 0.02 points apart, so a small change in the weights can change which one ranks first.
 42. weights that total 110  [exit code 1]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=50,duration=25,time=15,flex=20
     feedback: Error: weights must total 100 (or 1.0), but they total 110

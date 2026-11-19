@@ -5,9 +5,9 @@
    100 points at half the budget or less, whatever the other offers cost.
    Rankings compared: 240
                                                               Relative   Fixed
-   First two offers more than 0 and less than 1 point apart         77      65
-   Order of the others changes when the last offer is removed       43      21
-   The two scales recommend the same offer in 231 of 240 rankings.
+   First two offers more than 0 and less than 1 point apart         83      73
+   Order of the others changes when the last offer is removed       39      14
+   The two scales recommend the same offer in 230 of 240 rankings.
 
 2. How large must a weight be to decide the ranking? (the 70 percent limit)
    The same 60 requests. Price gets the weight shown; duration, departure and flexibility
@@ -21,13 +21,31 @@
 
 3. Where to draw the line for a near tie? (the 1 point limit)
    The 60 requests without a budget, 4 profiles: 240 rankings, as in the trials part.
-   first two offers more than 0 and less than 0.5 points apart:  60 of 240
-   first two offers more than 0 and less than 1 points apart: 102 of 240
-   first two offers more than 0 and less than 2 points apart: 164 of 240
-   first two offers more than 0 and less than 5 points apart: 235 of 240
+   first two offers more than 0 and less than 0.5 points apart:  63 of 240
+   first two offers more than 0 and less than 1 points apart: 105 of 240
+   first two offers more than 0 and less than 2 points apart: 193 of 240
+   first two offers more than 0 and less than 5 points apart: 233 of 240
 
-4. A missing emissions figure: the median (the program) against the worst score
-   The 60 requests without a budget, environment profile (emissions 40 percent).
+4. A missing emissions figure: the lowest reported points (the program) against the median
+   The median was the program's rule before it was measured here. The 60 requests without
+   a budget, environment profile (emissions 40 percent).
    Rankings that hold an offer without a figure: 60 of 60, with 98 offers on average
-   Best rank of an offer without a figure, on average: median 33.4, worst score 61.3
-   With the median, 59 offers that report a figure rank below it on average.
+                                                                   Lowest  Median
+   Best rank of an offer without a figure, on average                60.9    32.6
+   Offers with a figure that rank below it, on average                 31      60
+
+5. Flexibility: the refund percentage (the program) against refundable yes or no
+   Yes or no was the program's rule before: 50 points for a refundable ticket, whatever
+   it refunds. Now the 50 points are multiplied by the refund percentage.
+   The 60 requests without a budget, 4 profiles: 240 rankings.
+                                                                  Percent  Yes/no
+   A ticket that refunds less than 90 percent ranks first              60      96
+   First two offers more than 0 and less than 1 point apart           105     102
+   The two rules recommend the same offer in 204 of 240 rankings.
+
+6. How often does the winner change when the weights move by 10 points?
+   The 60 requests without a budget. Base: price 40, duration 25, departure 15,
+   flexibility 20. Price down: 30, 30, 20, 20. Price up: 50, 20, 10, 20.
+   Another winner with price at 30: 23 of 60
+   Another winner with price at 50: 27 of 60
+   Another winner in at least one of the two: 42 of 60

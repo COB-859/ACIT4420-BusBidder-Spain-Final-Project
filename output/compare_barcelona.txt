@@ -17,9 +17,9 @@ Profile comparison: same request and same offers, different weights
 ------------------------------------------------------------------------
 Profile   Top offer      Company         Departs                 Price Duration Fare       Total
 budget    CL-BAR-0009-B  CostaLink       Wed 14 Jul 16:15    35.97 EUR 7h 35m   basic      73.26
-business  CE-BAR-0006-F  Camino Express  Mon 12 Jul 18:00    68.56 EUR 7h 10m   flex       83.97
-flexible  CL-BAR-0009-F  CostaLink       Wed 14 Jul 16:15    53.96 EUR 7h 35m   flex       81.90
-eco       VB-BAR-0004-S  VerdeBus        Tue 13 Jul 16:30    53.54 EUR 8h 00m   standard   79.52
+business  CE-BAR-0006-F  Camino Express  Mon 12 Jul 18:00    68.56 EUR 7h 10m   flex       83.22
+flexible  CL-BAR-0009-F  CostaLink       Wed 14 Jul 16:15    53.96 EUR 7h 35m   flex       79.40
+eco       VB-BAR-0004-S  VerdeBus        Tue 13 Jul 16:30    53.54 EUR 8h 00m   standard   75.77
 
 The 4 profiles recommend 4 different offers.
 
@@ -47,17 +47,17 @@ Weights: Price 55%, Duration 15%, Departure 10%, Flexibility 10%, Transfers 10%
 Profile 'business': Business traveller: a short journey at the right time of day
 Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
 ------------------------------------------------------------------------
-#1  CE-BAR-0006-F  Camino Express, flex fare   TOTAL 83.97
+#1  CE-BAR-0006-F  Camino Express, flex fare   TOTAL 83.22
     Mon 12 Jul 18:00 -> Tue 13 Jul 01:10 (7h 10m), direct, 15 seats left, luggage 30 kg
     Price       68.56 EUR                    0.0 pts x    10% =   0.00
     Duration    7h 10m                      82.8 pts x    35% =  28.97
     Departure   18:00                      100.0 pts x    30% =  30.00
-    Flexibility changeable + refundable    100.0 pts x    15% =  15.00
+    Flexibility changeable + 90% refund     95.0 pts x    15% =  14.25
     Transfers   direct                     100.0 pts x    10% =  10.00
-    next: #2 CL-BAR-0009-F (81.47), #3 CE-BAR-0006-S (79.79)
+    next: #2 CL-BAR-0009-F (80.72), #3 CE-BAR-0006-S (79.79)
 
-  CE-BAR-0006-F (Camino Express, flex fare) ranks first with 83.97 points out of 100.
-  Compared with the runner-up CL-BAR-0009-F (81.47 points), it gains most on duration (7h 10m against 7h 35m, +6.03 points).
+  CE-BAR-0006-F (Camino Express, flex fare) ranks first with 83.22 points out of 100.
+  Compared with the runner-up CL-BAR-0009-F (80.72 points), it gains most on duration (7h 10m against 7h 35m, +6.03 points).
   The runner-up is better on price (53.96 EUR against 68.56 EUR, -3.54 points for the top offer).
   Of the criteria it scores well on, the largest contributions come from departure (18:00, 30.00 points) and duration (7h 10m, 28.97 points).
   Remaining disadvantage: price (68.56 EUR scores 0.0 of 100).
@@ -67,18 +67,17 @@ Weights: Price 10%, Duration 35%, Departure 30%, Flexibility 15%, Transfers 10%
 Profile 'flexible': Flexibility-focused tourist: a ticket that can be changed or refunded
 Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
 ------------------------------------------------------------------------
-#1  CL-BAR-0009-F  CostaLink, flex fare   TOTAL 81.90
+#1  CL-BAR-0009-F  CostaLink, flex fare   TOTAL 79.40
     Wed 14 Jul 16:15 -> 23:50 (7h 35m), direct, 43 seats left, luggage 30 kg
     Price       53.96 EUR                   35.4 pts x    20% =   7.08
     Duration    7h 35m                      65.5 pts x    15% =   9.83
     Departure   16:15                      100.0 pts x    15% =  15.00
-    Flexibility changeable + refundable    100.0 pts x    50% =  50.00
-    next: #2 VB-BAR-0005-S (80.34), #3 VB-BAR-0004-S (79.52)
+    Flexibility changeable + 90% refund     95.0 pts x    50% =  47.50
+    next: #2 CL-BAR-0008-F (75.43), #3 CE-BAR-0006-F (74.91)
 
-  CL-BAR-0009-F (CostaLink, flex fare) ranks first with 81.90 points out of 100.
-  Compared with the runner-up VB-BAR-0005-S (80.34 points), it gains most on duration (7h 35m against 7h 55m, +2.07 points).
-  The runner-up is better on price (52.92 EUR against 53.96 EUR, -0.50 points for the top offer).
-  Of the criteria it scores well on, the largest contributions come from flexibility (changeable + refundable, 50.00 points) and departure (16:15, 15.00 points).
+  CL-BAR-0009-F (CostaLink, flex fare) ranks first with 79.40 points out of 100.
+  Compared with the runner-up CL-BAR-0008-F (75.43 points), it gains most on duration (7h 35m against 8h 00m, +2.59 points) and price (53.96 EUR against 56.83 EUR, +1.39 points).
+  Of the criteria it scores well on, the largest contributions come from flexibility (changeable + 90% refund, 47.50 points) and departure (16:15, 15.00 points).
   Remaining disadvantage: price (53.96 EUR scores 35.4 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
@@ -86,19 +85,19 @@ Weights: Price 20%, Duration 15%, Departure 15%, Flexibility 50%
 Profile 'eco': Environment-focused traveller: low emissions per passenger
 Weights: Price 20%, Duration 15%, Departure 10%, Flexibility 15%, Emissions 40%
 ------------------------------------------------------------------------
-#1  VB-BAR-0004-S  VerdeBus, standard fare   TOTAL 79.52
+#1  VB-BAR-0004-S  VerdeBus, standard fare   TOTAL 75.77
     Tue 13 Jul 16:30 -> Wed 14 Jul 00:30 (8h 00m), direct, 48 seats left, luggage 20 kg
     Price       53.54 EUR                   36.4 pts x    20% =   7.28
     Duration    8h 00m                      48.3 pts x    15% =   7.24
     Departure   16:30                      100.0 pts x    10% =  10.00
-    Flexibility changeable + refundable    100.0 pts x    15% =  15.00
+    Flexibility changeable + 50% refund     75.0 pts x    15% =  11.25
     Emissions   10.6 kg                    100.0 pts x    40% =  40.00
-    next: #2 VB-BAR-0005-S (78.46), #3 VB-BAR-0003-S (77.03)
+    next: #2 VB-BAR-0005-S (74.71), #3 VB-BAR-0003-S (73.28)
 
-  VB-BAR-0004-S (VerdeBus, standard fare) ranks first with 79.52 points out of 100.
-  Compared with the runner-up VB-BAR-0005-S (78.46 points), it gains most on emissions (10.6 kg against 11.0 kg, +1.88 points).
+  VB-BAR-0004-S (VerdeBus, standard fare) ranks first with 75.77 points out of 100.
+  Compared with the runner-up VB-BAR-0005-S (74.71 points), it gains most on emissions (10.6 kg against 11.0 kg, +1.88 points).
   The runner-up is better on duration (7h 55m against 8h 00m, -0.52 points for the top offer).
-  Of the criteria it scores well on, the largest contributions come from emissions (10.6 kg, 40.00 points) and flexibility (changeable + refundable, 15.00 points).
+  Of the criteria it scores well on, the largest contributions come from emissions (10.6 kg, 40.00 points) and flexibility (changeable + 50% refund, 11.25 points).
   Remaining disadvantage: price (53.54 EUR scores 36.4 of 100).
   This result holds only for the mandatory conditions, weights and scoring rules used here. With other weights, another offer can rank first.
 
