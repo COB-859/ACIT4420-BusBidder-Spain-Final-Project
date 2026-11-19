@@ -228,6 +228,13 @@ class RequiredOptionTests(CliTestCase):
                 self.assertIn(f"the following arguments are required: {missing}", text)
 
 
+    def test_an_option_must_be_typed_in_full(self):
+        # "--to" is the start of "--top" and must not be taken for it.
+        code, text = self.run_usage_error("search", *MALAGA, "--profile", "budget", "--to", "3")
+        self.assertEqual(code, 2)
+        self.assertIn("unrecognized arguments: --to 3", text)
+        self.assertNotIn("--top", text)
+
     def test_book_needs_an_offer_and_cancel_needs_a_reference(self):
         for command, missing in (("book", "--offer"), ("cancel", "--ref")):
             with self.subTest(command=command):

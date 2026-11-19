@@ -136,7 +136,7 @@ class NearTieTests(unittest.TestCase):
         return rank_offers(three_offers(), REQUEST, check_weights(weights))
 
     def test_gap_is_reported_only_between_0_and_the_limit(self):
-        ranked = self.ranked_with(SPEC_WEIGHTS)                # totals 70.0, 67.5, 27.5
+        ranked = self.ranked_with(SPEC_WEIGHTS)                # totals 70.0, 67.5, 26.5
         self.assertIsNone(near_tie_gap(ranked))
         self.assertEqual(format_near_tie(ranked), [])
         self.assertIsNone(near_tie_gap(ranked[:1]))

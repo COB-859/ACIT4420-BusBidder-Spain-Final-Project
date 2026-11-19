@@ -530,6 +530,13 @@ class FriendlyParser(argparse.ArgumentParser):
     which hides the reason from the traveller.
     """
 
+    def __init__(self, *args, **kwargs) -> None:
+        """Create the parser; an option must be typed in full."""
+        # The standard parser accepts the start of an option name, so
+        # "--to Malaga" would be read as "--top Malaga".
+        kwargs.setdefault("allow_abbrev", False)
+        super().__init__(*args, **kwargs)
+
     def error(self, message: str) -> None:
         """Print the reason and where to find the options, then stop with code 2."""
         self.exit(EXIT_USAGE, f"Error: {message}.\nRun 'python3 {self.prog} --help' to see the options.\n")
