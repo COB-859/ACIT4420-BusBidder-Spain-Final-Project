@@ -2,26 +2,26 @@
 The README states that the program is made for one user at a time.
 
 Round  Told confirmed  Bookings saved  Told sold out  Told not saved  Outcome
-1                   2               2              6               0  consistent
-2                   2               2              5               1  consistent
+1                   4               2              4               0  2 confirmation(s) for a booking that was not saved
+2                   2               2              6               0  consistent
 3                   2               2              6               0  consistent
-4                   3               2              5               0  1 confirmation(s) for a booking that was not saved
-5                   2               2              6               0  consistent
-6                   4               2              4               0  2 confirmation(s) for a booking that was not saved
-7                   2               2              6               0  consistent
+4                   2               2              5               1  consistent
+5                   4               2              4               0  2 confirmation(s) for a booking that was not saved
+6                   2               2              5               1  consistent
+7                   3               2              4               1  1 confirmation(s) for a booking that was not saved
 8                   2               2              6               0  consistent
-9                   2               2              6               0  consistent
-10                  2               2              6               0  consistent
-11                  2               2              5               1  consistent
-12                  2               2              5               1  consistent
+9                   3               2              3               2  1 confirmation(s) for a booking that was not saved
+10                  3               2              4               1  1 confirmation(s) for a booking that was not saved
+11                  2               2              6               0  consistent
+12                  3               2              5               0  1 confirmation(s) for a booking that was not saved
 13                  2               2              6               0  consistent
-14                  4               2              4               0  2 confirmation(s) for a booking that was not saved
-15                  2               2              6               0  consistent
-16                  3               2              4               1  1 confirmation(s) for a booking that was not saved
-17                  3               2              5               0  1 confirmation(s) for a booking that was not saved
-18                  2               2              6               0  consistent
-19                  2               2              5               1  consistent
-20                  2               2              6               0  consistent
+14                  2               2              6               0  consistent
+15                  1               2              4               2  1 traveller(s) got another answer
+16                  2               2              5               1  consistent
+17                  4               2              4               0  2 confirmation(s) for a booking that was not saved
+18                  3               2              5               0  1 confirmation(s) for a booking that was not saved
+19                  3               2              5               0  1 confirmation(s) for a booking that was not saved
+20                  3               2              5               0  1 confirmation(s) for a booking that was not saved
 
-Confirmations given for bookings that were not saved, over 20 rounds: 7
+Confirmations given for bookings that were not saved, over 20 rounds: 12
 'Told not saved' is the error 'cannot write bookings file': that traveller is told that nothing was booked.

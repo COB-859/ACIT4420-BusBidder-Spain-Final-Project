@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import math
+import re
 import unicodedata
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -58,6 +59,7 @@ logger = logging.getLogger("busbidder.cli")
 EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_USAGE = 2
+PLAIN_INTEGER = re.compile(r"-?\d+")
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_STATE_DIR = Path("state")
 DEFAULT_LOG_DIR = Path("logs")
@@ -359,6 +361,8 @@ def optional(convert: Callable[[str], object]) -> Callable[[str], object]:
 def to_number(text: str, kind: type, minimum: float, what: str):
     """Return the answer as a number of the given kind, at least minimum."""
     try:
+        if "_" in text:
+            raise ValueError
         number = kind(text)
     except ValueError:
         raise ValueError(f"{what} must be a number") from None
@@ -509,19 +513,32 @@ class FriendlyParser(argparse.ArgumentParser):
         self.exit(EXIT_USAGE, f"Error: {message}.\nRun 'python3 {self.prog} --help' to see the options.\n")
 
 
-def whole_number(minimum: int) -> Callable[[str], int]:
-    """Return a converter for a whole number that is at least minimum."""
+def whole_number(minimum: int | None = None) -> Callable[[str], int]:
+    """Return a converter for a whole number, at least minimum when one is given.
+
+    Python's int() also accepts forms such as 1_0, which a traveller would
+    only type by mistake, so the text must consist of digits.
+    """
 
     def convert(text: str) -> int:
-        try:
-            number = int(text)
-        except ValueError:
-            raise argparse.ArgumentTypeError(f"must be a whole number: {text!r}") from None
-        if number < minimum:
+        if not PLAIN_INTEGER.fullmatch(text.strip()):
+            raise argparse.ArgumentTypeError(f"must be a whole number: {text!r}")
+        number = int(text)
+        if minimum is not None and number < minimum:
             raise argparse.ArgumentTypeError(f"must be {minimum} or more: {text!r}")
         return number
 
     return convert
+
+
+def amount(text: str) -> float:
+    """Return an amount typed on the command line as a number."""
+    if "_" in text:
+        raise argparse.ArgumentTypeError(f"must be a number: {text!r}")
+    try:
+        return float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"must be a number: {text!r}") from None
 
 
 def _add_folder_options(parser: argparse.ArgumentParser, top_level: bool) -> None:
@@ -547,13 +564,13 @@ def _add_request_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--date-to", required=True, help="last travel date, for example 2027-07-14")
     parser.add_argument("--depart", required=True,
                         help="preferred departure: morning, afternoon, evening, night or a time like 08:30")
-    parser.add_argument("--passengers", type=whole_number(-10**9), default=1, help="number of passengers (default: 1)")
-    parser.add_argument("--budget", type=float, help="mandatory: highest price per person in EUR")
-    parser.add_argument("--max-transfers", type=int, help="mandatory: highest number of transfers")
-    parser.add_argument("--max-duration", type=int, help="mandatory: longest journey in minutes")
+    parser.add_argument("--passengers", type=whole_number(), default=1, help="number of passengers (default: 1)")
+    parser.add_argument("--budget", type=amount, help="mandatory: highest price per person in EUR")
+    parser.add_argument("--max-transfers", type=whole_number(), help="mandatory: highest number of transfers")
+    parser.add_argument("--max-duration", type=whole_number(), help="mandatory: longest journey in minutes")
     parser.add_argument("--changeable", action="store_true", help="mandatory: ticket must be changeable")
     parser.add_argument("--refundable", action="store_true", help="mandatory: ticket must be refundable")
-    parser.add_argument("--min-luggage", type=int, help="mandatory: lowest luggage allowance in kg")
+    parser.add_argument("--min-luggage", type=whole_number(), help="mandatory: lowest luggage allowance in kg")
     parser.add_argument("--allow-dominant", action="store_true",
                         help="accept weights where one criterion counts for more than 70%%")
     parser.add_argument("--save", type=Path, help="also write the result to this file")
@@ -593,7 +610,7 @@ def build_parser() -> argparse.ArgumentParser:
     book = commands.add_parser("book", help="book an offer (simulated, no payment)")
     _add_folder_options(book, top_level=False)
     book.add_argument("--offer", required=True, help="offer ID from a ranking, for example SR-MAL-0001-B")
-    book.add_argument("--passengers", type=whole_number(-10**9), default=1, help="number of passengers (default: 1)")
+    book.add_argument("--passengers", type=whole_number(), default=1, help="number of passengers (default: 1)")
 
     bookings = commands.add_parser("bookings", help="list the saved bookings")
     _add_folder_options(bookings, top_level=False)

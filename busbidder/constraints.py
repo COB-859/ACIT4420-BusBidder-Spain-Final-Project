@@ -265,23 +265,33 @@ def filter_offers(
 def advise(result: FilterResult, request: TravelRequest) -> list[str]:
     """Say why no offer is left and which value would work.
 
-    The advice is about the constraint that removed the most offers. Its
-    suggestion is worked out from the offers that fail only that
-    constraint, because those are the offers the traveller gets by
-    changing it. The cheapest offer of all is the wrong answer when it
-    also fails another requirement.
+    The advice is about a constraint the traveller can act on: one that
+    some offers fail and nothing else. Changing that constraint alone
+    gives those offers. Among such constraints the one that removed the
+    most offers is used, and the first registered one when two removed
+    equally many. The suggestion is worked out from the offers that fail
+    only that constraint. The cheapest offer of all is the wrong answer
+    when it also fails another requirement.
+
+    When every offer fails two requirements or more, no single change is
+    enough, and the advice says so.
     """
-    name = result.strictest()
-    if name is None:
+    strictest = result.strictest()
+    if strictest is None:
         return []
+    fails_only: dict[str, list[RemovedOffer]] = {}
+    for entry in result.removed:
+        if len(entry.reasons) == 1:
+            fails_only.setdefault(next(iter(entry.reasons)), []).append(entry)
+    name = max(fails_only, key=lambda key: result.counts[key], default=strictest)
     rule = CONSTRAINTS[name]
     problem = (rule.problem(request) if rule.problem is not None else None) or f"fail the condition '{name}'"
     lines = [f"{result.counts[name]} of the {result.in_scope} offers {problem}."]
-    alone = [entry for entry in result.removed if set(entry.reasons) == {name}]
+    alone = fails_only.get(name, [])
     if not alone:
         lines.append(
-            "Changing this alone is not enough: no offer meets your other requirements either. "
-            "Try removing a requirement."
+            "Changing one requirement alone is not enough: every offer fails at least two "
+            "of your requirements. Try removing a requirement."
         )
     elif rule.suggest is not None:
         # "at least 1 seat left" is always a condition, so it is only

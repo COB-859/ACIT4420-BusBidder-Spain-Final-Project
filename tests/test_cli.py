@@ -545,7 +545,7 @@ class CancelCommandTests(CliTestCase):
         code, text = self.run_main("cancel", "--ref", reference)
         self.assertEqual(code, EXIT_OK)
         self.assertIn(f"Booking {reference} is cancelled: 1 basic seat to Malaga.", text)
-        self.assertIn("No refund, because basic tickets are not refundable.", text)
+        self.assertIn("No refund, because this basic ticket is not refundable.", text)
 
     def test_sold_out_booking_says_sold_out(self):
         self.book("SR-MAL-0001-B", "3")

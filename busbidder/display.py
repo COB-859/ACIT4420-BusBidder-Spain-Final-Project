@@ -253,7 +253,7 @@ def format_outcome(booking: Booking) -> list[str]:
             f"({booking.fare.refund_percent:g}% of the {booking.total_price:.2f} EUR paid)."
         )
     else:
-        lines.append(f"No refund, because {fare_type} tickets are not refundable.")
+        lines.append(f"No refund, because this {fare_type} ticket is not refundable.")
     return lines
 
 

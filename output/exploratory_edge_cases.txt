@@ -139,8 +139,8 @@
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --budget 40 --max-transfers 0 --max-duration 400 --changeable --refundable --min-luggage 30
     feedback: Offers left to rank: 0
     feedback: No buses match all your requirements.
-    feedback: 32 of the 47 offers allow less than 30 kg of luggage.
-    feedback: Changing this alone is not enough: no offer meets your other requirements either. Try removing a requirement.
+    feedback: 27 of the 47 offers cost more than your budget of 40.00 EUR.
+    feedback: The cheapest offer that meets your other requirements costs 47.57 EUR.
 39. weights as fractions  [exit code 0]
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --weights price=0.4,duration=0.25,time=0.15,flex=0.2
     feedback: Offers left to rank: 45
@@ -193,7 +193,7 @@
     command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --top 999
     feedback: Offers left to rank: 45
 55. save to a place that is not a folder  [exit code 1]
-    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --save '<project>/data/companies.csv/result.txt'
+    command:  search --destination Malaga --date-from 2027-07-12 --date-to 2027-07-14 --depart morning --profile budget --save <project>/data/companies.csv/result.txt
     feedback: Offers left to rank: 45
     feedback: Error: the result is shown above, but it could not be saved to <project>/data/companies.csv/result.txt: File exists
 56. only the destination given  [exit code 2]
@@ -253,7 +253,7 @@
 71. cancel a standard seat, reference in lower case  [exit code 0]
     command:  cancel --ref ' BB-<date>-<code> '
     feedback: Booking BB-<date>-<code> is cancelled: 1 standard seat to Malaga.
-    feedback: No refund, because standard tickets are not refundable.
+    feedback: No refund, because this standard ticket is not refundable.
     feedback: Seats left on this bus: 44
 72. bookings after booking and cancelling  [exit code 0]
     command:  bookings

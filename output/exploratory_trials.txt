@@ -7,12 +7,14 @@
    First and second place are 0.42 points apart.
 
 2. Which company does each profile recommend? (60 requests)
-   Profile     Camino Express       CostaLink        NocheVia         SolRuta        VerdeBus  Near ties
-   budget                   0               3              29              28               0         32
-   business                57               0               2               0               1         25
-   flexible                12              13               0               0              35         30
-   eco                      0               0               0               0              60         15
-   'Near ties' counts the requests where the first two offers are less than 1 point apart.
+   Profile     Camino Express       CostaLink        NocheVia         SolRuta        VerdeBus  Near ties  Exact ties
+   budget                   0               3              29              28               0         32           2
+   business                57               0               2               0               1         25           1
+   flexible                12              13               0               0              35         30           0
+   eco                      0               0               0               0              60         15           1
+   'Near ties' counts the requests where the first two offers are more than 0 and less than
+   1 point apart: the program prints a note for these. 'Exact ties' have the same total,
+   and the tie rule decides the order.
 
 3. How often does the night company NocheVia rank first, by preferred departure?
    morning      0 of 60 rankings

@@ -178,7 +178,7 @@ class BookingTextTests(unittest.TestCase):
         not_refunded = make_booking(status="cancelled")
         not_refunded.refund_amount = 0.0
         text = text_of(format_confirmation(not_refunded))
-        self.assertIn("No refund, because basic tickets are not refundable.", text)
+        self.assertIn("No refund, because this basic ticket is not refundable.", text)
         self.assertNotIn("Refund:", text)
 
 

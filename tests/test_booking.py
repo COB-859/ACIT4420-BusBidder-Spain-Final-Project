@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from datetime import datetime
+from unittest import mock
 from pathlib import Path
 
 from busbidder.booking import BookingService, BookingStore, SeatLedger, random_code
@@ -40,6 +41,20 @@ class BookingStoreTests(unittest.TestCase):
 
     def test_no_file_means_no_bookings(self):
         self.assertEqual(self.store.load(), [])
+
+    def test_a_failed_save_leaves_the_old_file_whole(self):
+        # The new bookings are written to a temporary file and moved into
+        # place in one step. When that step fails, the old file must be
+        # untouched and no temporary file may be left behind.
+        self.store.save([make_booking()])
+        before = self.path.read_text(encoding="utf-8")
+        with mock.patch("busbidder.booking.os.replace", side_effect=OSError("disk full")):
+            with self.assertRaises(DataFileError) as caught:
+                self.store.save([make_booking(), make_booking("BB-20261120-BBBBBB")])
+        self.assertIn("cannot write bookings file", str(caught.exception))
+        self.assertEqual(self.path.read_text(encoding="utf-8"), before)
+        self.assertEqual([entry.name for entry in self.path.parent.iterdir()], ["bookings.json"])
+        self.assertEqual(len(self.store.load()), 1)
 
     def test_bookings_are_saved_and_read_back(self):
         bookings = [make_booking(), make_booking("BB-20261120-BBBBBB", letter="S", passengers=3)]

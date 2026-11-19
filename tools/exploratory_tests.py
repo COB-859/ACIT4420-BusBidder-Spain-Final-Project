@@ -169,8 +169,11 @@ def explore_edge_cases() -> int:
             code, text = run_program(arguments, folder)
             crashes += isinstance(code, str) or "unexpected problem" in text
             references += re.findall(r"Your reference is (BB-\d{8}-[A-Z0-9]{6})", text)
-            shown = " ".join(a if a and " " not in a else repr(a) for a in arguments)
-            shown = REFERENCE.sub("BB-<date>-<code>", shown).replace(str(ROOT), "<project>")
+            # The project folder is masked before quoting, so the report is
+            # the same wherever the project is kept.
+            masked = [a.replace(str(ROOT), "<project>") for a in arguments]
+            shown = " ".join(a if a and " " not in a else repr(a) for a in masked)
+            shown = REFERENCE.sub("BB-<date>-<code>", shown)
             print(f"{number:>2}. {label}  [exit code {code}]")
             print(f"    command:  {shown}")
             for line in feedback_lines(text)[:5]:
@@ -216,14 +219,17 @@ def random_weights(rng: random.Random) -> dict[str, float]:
     return dict(zip(names, map(float, parts)))
 
 
-def check_search_rules(rules: Rules, rng: random.Random, searches: int = 300) -> None:
+def check_search_rules(rules: Rules, rng: random.Random, searches: int = 1000) -> None:
     """Run random searches and check the rules of filtering and ranking."""
     data = load_all(DATA)
     offers = data.offers()
     seats = {key: departure.seats for key, departure in data.departures.items()}
     cities = [destination.name for destination in data.destinations.values()]
     for _ in range(searches):
-        wanted = {"destination": rng.choice(cities), "date_from": "2027-07-10", "date_to": "2027-07-16",
+        first_day = rng.randint(10, 16)
+        last_day = rng.randint(first_day, 16)
+        wanted = {"destination": rng.choice(cities), "date_from": f"2027-07-{first_day}",
+                  "date_to": f"2027-07-{last_day}",
                   "depart": rng.choice(["morning", "night", "14:00"]), "passengers": rng.randint(1, 6)}
         if rng.random() < 0.6:
             wanted["budget"] = rng.choice([20, 35, 50, 80])
@@ -233,6 +239,10 @@ def check_search_rules(rules: Rules, rng: random.Random, searches: int = 300) ->
             wanted["changeable"] = True
         if rng.random() < 0.2:
             wanted["refundable"] = True
+        if rng.random() < 0.3:
+            wanted["max_duration"] = rng.choice([300, 420, 540])
+        if rng.random() < 0.3:
+            wanted["min_luggage"] = rng.choice([10, 20, 30])
         request = cli.build_request(data.destinations, **wanted)
         result = filter_offers(offers, request, seats)
         weights = check_weights(random_weights(rng))
@@ -243,6 +253,9 @@ def check_search_rules(rules: Rules, rng: random.Random, searches: int = 300) ->
             offer = scored.offer
             meets = (
                 offer.departure.destination.name == wanted["destination"]
+                and wanted["date_from"] <= offer.departure.departure.date().isoformat() <= wanted["date_to"]
+                and offer.duration_minutes <= wanted.get("max_duration", 10 ** 6)
+                and offer.fare.luggage_kg >= wanted.get("min_luggage", 0)
                 and seats[offer.departure.departure_id] >= wanted["passengers"]
                 and offer.price <= wanted.get("budget", float("inf"))
                 and offer.departure.transfers <= wanted.get("max_transfers", 99)
@@ -436,12 +449,13 @@ def explore_trials() -> int:
 
     print("\n2. Which company does each profile recommend? (60 requests)")
     companies = sorted(company.name for company in data.companies.values())
-    print(f"   {'Profile':<10}" + "".join(f"{name:>16}" for name in companies) + f"{'Near ties':>11}")
+    print(f"   {'Profile':<10}" + "".join(f"{name:>16}" for name in companies)
+          + f"{'Near ties':>11}{'Exact ties':>12}")
     night_bus_wins = {period: 0 for period in PERIODS}
     for key, profile in profiles.items():
         weights = check_weights(profile.weights)
         winners = dict.fromkeys(companies, 0)
-        near_ties = 0
+        near_ties = exact_ties = 0
         for city in data.destinations.values():
             for period in PERIODS:
                 wanted = cli.build_request(data.destinations, city.name, "2027-07-10", "2027-07-16", period)
@@ -449,9 +463,13 @@ def explore_trials() -> int:
                 winner = ranking[0].offer.company.name
                 winners[winner] += 1
                 near_ties += near_tie_gap(ranking) is not None
+                exact_ties += round(ranking[0].total - ranking[1].total, 2) == 0
                 night_bus_wins[period] += winner == "NocheVia"
-        print(f"   {key:<10}" + "".join(f"{winners[name]:>16}" for name in companies) + f"{near_ties:>11}")
-    print("   'Near ties' counts the requests where the first two offers are less than 1 point apart.")
+        print(f"   {key:<10}" + "".join(f"{winners[name]:>16}" for name in companies)
+              + f"{near_ties:>11}{exact_ties:>12}")
+    print("   'Near ties' counts the requests where the first two offers are more than 0 and less than")
+    print("   1 point apart: the program prints a note for these. 'Exact ties' have the same total,")
+    print("   and the tie rule decides the order.")
 
     print("\n3. How often does the night company NocheVia rank first, by preferred departure?")
     for period in PERIODS:

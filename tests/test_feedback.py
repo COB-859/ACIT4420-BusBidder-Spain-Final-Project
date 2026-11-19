@@ -10,7 +10,7 @@ import unittest
 from dataclasses import replace
 from datetime import date
 
-from busbidder.cli import EXIT_ERROR, EXIT_OK, EXIT_USAGE, main, plain
+from busbidder.cli import EXIT_ERROR, EXIT_OK, EXIT_USAGE, main, plain, to_number
 from busbidder.constraints import CONSTRAINTS, filter_offers
 from busbidder.display import format_filter, format_near_tie, format_ranking, format_seats_after
 from busbidder.loader import LoadResult
@@ -97,12 +97,29 @@ class AdviceTests(CliTestCase):
         self.assertEqual(self.advice("--budget", "40", "--max-transfers", "0")[1],
                          "The cheapest offer that meets your other requirements costs 48.00 EUR.")
 
-    def test_advice_says_when_one_change_is_not_enough(self):
+    def test_advice_is_about_a_requirement_whose_change_alone_gives_offers(self):
+        # Refundable removes the most offers (4), but every one of them also
+        # fails the budget or the transfer limit, so dropping it gives nothing.
+        # The 60.00 EUR fare fails the budget only, so the budget is the
+        # requirement the traveller can act on.
+        self.assertEqual(self.advice("--refundable", "--budget", "40", "--max-transfers", "0"), [
+            "3 of the 5 offers cost more than your budget of 40.00 EUR.",
+            "The cheapest offer that meets your other requirements costs 60.00 EUR.",
+        ])
+        code, text = self.run_main("search", *MALAGA, "--profile", "budget",
+                                   "--refundable", "--budget", "60", "--max-transfers", "0")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("#1  CE-MAL-0001-F", text)
+
+    def test_advice_says_when_no_single_change_is_enough(self):
         self.assertEqual(self.advice("--passengers", "30", "--budget", "5"), [
             "5 of the 5 offers have fewer than 30 seats left.",
-            "Changing this alone is not enough: no offer meets your other requirements either. "
-            "Try removing a requirement.",
+            "Changing one requirement alone is not enough: every offer fails at least two "
+            "of your requirements. Try removing a requirement.",
         ])
+        for options in (["--budget", "5"], ["--passengers", "30"]):
+            with self.subTest(options=options):
+                self.assertNotIn("not enough", " ".join(self.advice(*options)))
 
     def test_a_journey_limit_of_zero_minutes_is_refused(self):
         code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--max-duration", "0")
@@ -212,11 +229,42 @@ class CommandFeedbackTests(CliTestCase):
         for arguments, reason, program in cases:
             with self.subTest(arguments=arguments[-2:]):
                 code, text = self.run_usage_error(*arguments)
-                self.assertEqual(code, EXIT_USAGE)
+                # The literal 2 is the documented exit code, so a change to the constant is noticed.
+                self.assertEqual(code, 2)
+                self.assertEqual(EXIT_USAGE, 2)
                 self.assertIn(reason, text)
                 self.assertIn(f"Run 'python3 {program} --help' to see the options.", text)
                 self.assertNotIn("usage:", text)
                 self.assertEqual(len(text.strip().splitlines()), 2)
+
+    def test_a_number_with_an_underscore_is_refused(self):
+        # Python reads 1_0 as 10. The data files refuse that form, and so does the command line.
+        cases = (
+            (["--passengers", "1_0"], "Error: argument --passengers: must be a whole number: '1_0'."),
+            (["--budget", "4_0"], "Error: argument --budget: must be a number: '4_0'."),
+            (["--max-transfers", "1_"], "Error: argument --max-transfers: must be a whole number: '1_'."),
+            (["--min-luggage", "2_0"], "Error: argument --min-luggage: must be a whole number: '2_0'."),
+        )
+        for options, reason in cases:
+            with self.subTest(options=options):
+                code, text = self.run_usage_error("search", *MALAGA, "--profile", "budget", *options)
+                self.assertEqual(code, 2)
+                self.assertIn(reason, text)
+
+    def test_the_guided_mode_refuses_a_number_with_an_underscore(self):
+        with self.assertRaises(ValueError) as caught:
+            to_number("1_0", int, 1, "passengers")
+        self.assertEqual(str(caught.exception), "passengers must be a number")
+        self.assertEqual(to_number("10", int, 1, "passengers"), 10)
+
+    def test_a_refundable_ticket_of_the_same_type_is_not_called_non_refundable(self):
+        # "standard tickets are not refundable" would be false: one company
+        # sells a refundable standard ticket. The sentence is about this ticket.
+        _code, booked = self.run_main("book", "--offer", "SR-MAL-0001-S")
+        reference = next(line.split()[-1] for line in booked.splitlines() if line.startswith("Reference:"))
+        _code, text = self.run_main("cancel", "--ref", reference)
+        self.assertIn("No refund, because this standard ticket is not refundable.", text)
+        self.assertNotIn("standard tickets are", text)
 
     def test_zero_passengers_keeps_its_own_message(self):
         code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--passengers", "0")
