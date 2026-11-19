@@ -14,14 +14,16 @@ from datetime import time
 from pathlib import Path
 from unittest import mock
 
-from busbidder.booking import BookingStore
-from busbidder.cli import EXIT_OK, main
+from busbidder.booking import BookingStore, SeatLedger
+from busbidder.cli import (DEFAULT_DATA_DIR, DEFAULT_LOG_DIR, DEFAULT_OUTPUT_DIR, DEFAULT_STATE_DIR, EXIT_OK,
+                           build_parser, main)
+from busbidder.display import format_confirmation
 from busbidder.criteria import transfers_score
 from busbidder.explain import DISADVANTAGE_BELOW_POINTS, explain_top
 from busbidder.loader import write_rejected
 from busbidder.models import TimeBand
 from busbidder.ranking import check_weights, near_tie_gap, rank_offers
-from tests.helpers import make_departure, make_offer, make_request
+from tests.helpers import make_departure, make_fare, make_offer, make_request
 from tests.test_booking import make_booking
 from tests.test_cli import MALAGA, CliTestCase
 from tests.test_ranking import SPEC_WEIGHTS, three_offers
@@ -51,6 +53,9 @@ class SmallestValidValueTests(unittest.TestCase):
 
     def test_a_journey_limit_of_one_minute_is_valid(self):
         self.assertEqual(make_request(max_duration_minutes=1).max_duration_minutes, 1)
+
+    def test_a_luggage_allowance_of_zero_is_valid(self):
+        self.assertEqual(make_fare(luggage_kg=0).luggage_kg, 0)
 
     def test_two_offers_are_enough_for_a_near_tie(self):
         first, second, _third = rank_offers(three_offers(), REQUEST, check_weights(SPEC_WEIGHTS))
@@ -142,6 +147,57 @@ class LockEdgeTests(unittest.TestCase):
         self.assertFalse(store.lock_path.exists())
 
 
+class FullBusTests(unittest.TestCase):
+    def test_a_bus_that_is_exactly_full_is_not_reported_as_overbooked(self):
+        departures = {"SR-MAL-0001": make_departure(seats=2)}
+        with self.assertNoLogs("busbidder.booking", level="WARNING"):
+            ledger = SeatLedger(departures, [make_booking(passengers=2)])
+        self.assertEqual(ledger.seats_left("SR-MAL-0001"), 0)
+
+    def test_one_seat_too_many_is_reported(self):
+        departures = {"SR-MAL-0001": make_departure(seats=2)}
+        with self.assertLogs("busbidder.booking", level="WARNING") as logs:
+            SeatLedger(departures, [make_booking(passengers=3)])
+        self.assertIn("has 2 seats but 3 are booked", logs.output[0])
+
+
+class ArrivalTextTests(unittest.TestCase):
+    def test_an_arrival_on_the_same_day_shows_the_time_only(self):
+        self.assertIn("Arrival:        14:00", format_confirmation(make_booking()))
+
+    def test_an_arrival_on_the_next_day_shows_the_day(self):
+        overnight = replace(make_booking(), arrival=make_booking().arrival.replace(day=13, hour=0, minute=30))
+        self.assertIn("Arrival:        Tue 13 Jul 00:30", format_confirmation(overnight))
+
+
+class DefaultFolderTests(unittest.TestCase):
+    def test_the_folders_have_defaults_when_none_is_given(self):
+        args = build_parser().parse_args(["validate"])
+        self.assertEqual((args.data, args.state, args.logs, args.output),
+                         (DEFAULT_DATA_DIR, DEFAULT_STATE_DIR, DEFAULT_LOG_DIR, DEFAULT_OUTPUT_DIR))
+
+
+class SearchOptionEdgeTests(CliTestCase):
+    def test_top_zero_is_accepted_and_shows_every_offer(self):
+        code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--top", "0")
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("#1  ", text)
+
+    def test_a_result_is_saved_two_new_folders_deep(self):
+        target = self.folder / "one" / "two" / "result.txt"
+        code, _text = self.run_main("search", *MALAGA, "--profile", "budget", "--save", str(target))
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("#1  ", target.read_text(encoding="utf-8"))
+
+    def test_the_guided_mode_does_not_list_the_removed_offers(self):
+        answers = ["Malaga", "2027-07-12", "2027-07-14", "", "morning", "40", "", "", "", "", "", "budget", ""]
+        with mock.patch("builtins.input", side_effect=answers):
+            code, text = self.run_main()
+        self.assertEqual(code, EXIT_OK)
+        self.assertIn("Removed", text)
+        self.assertNotIn("Removed offers and the reasons:", text)
+
+
 class GuidedSingleDayTests(CliTestCase):
     def test_the_last_travel_day_may_be_the_first(self):
         answers = ["Malaga", "2027-07-12", "2027-07-12", "", "morning", "", "", "", "", "", "", "budget", ""]
@@ -163,11 +219,19 @@ class RequiredOptionTests(CliTestCase):
 
     def test_destination_and_departure_must_be_given(self):
         complete = dict(zip(MALAGA[::2], MALAGA[1::2]))
-        for missing in ("--destination", "--depart"):
+        for missing in ("--destination", "--depart", "--date-from", "--date-to"):
             with self.subTest(missing=missing):
                 arguments = [part for option, value in complete.items() if option != missing
                              for part in (option, value)]
                 code, text = self.run_usage_error("search", *arguments, "--profile", "budget")
+                self.assertEqual(code, 2)
+                self.assertIn(f"the following arguments are required: {missing}", text)
+
+
+    def test_book_needs_an_offer_and_cancel_needs_a_reference(self):
+        for command, missing in (("book", "--offer"), ("cancel", "--ref")):
+            with self.subTest(command=command):
+                code, text = self.run_usage_error(command)
                 self.assertEqual(code, 2)
                 self.assertIn(f"the following arguments are required: {missing}", text)
 
