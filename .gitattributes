@@ -1,0 +1,3 @@
+# Text files are checked out with LF line endings on every system, so the data files
+# match what tools/generate_data.py writes (the tests compare them byte for byte).
+* text=auto eol=lf
