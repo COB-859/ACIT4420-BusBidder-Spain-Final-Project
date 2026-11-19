@@ -11,8 +11,8 @@ the tests saying so. The project itself is not changed.
 Not every survivor is a gap. Some changes do not alter what the program
 does (an equivalent change), for example in a log message.
 
-The changes are chosen by a fixed rule (every k-th candidate), so the
-result is the same on every run. It takes a few minutes.
+Every possible change is tried, so the result is the same on every run.
+It takes about a quarter of an hour.
 """
 
 from __future__ import annotations
@@ -29,7 +29,6 @@ ROOT = Path(__file__).resolve().parent.parent
 # Every module of the program except the two that hold no rule (exceptions, logsetup).
 MODULES = ["booking", "cli", "constraints", "criteria", "display", "explain", "loader", "models", "ranking",
            "validation"]
-TARGET = 150
 # (text to find, replacement). Spaces keep "->" and "<=" apart from "<" and ">".
 CHANGES = [
     (" <= ", " < "), (" < ", " <= "), (" >= ", " > "), (" > ", " >= "),
@@ -87,9 +86,7 @@ def tests_fail(folder: Path) -> bool:
 
 def main() -> int:
     """Inject the faults and print how many the tests caught."""
-    every = candidates()
-    step = max(1, -(-len(every) // TARGET))
-    chosen = every[::step]
+    chosen = candidates()
     with tempfile.TemporaryDirectory() as temp:
         copy = Path(temp) / "project"
         for name in ("busbidder", "tests", "tools", "data"):
@@ -122,7 +119,7 @@ def main() -> int:
             path.write_text(original, encoding="utf-8")
 
     total, total_caught = sum(injected.values()), sum(caught.values())
-    print(f"Faults injected: one change at a time, every {step}th of {len(every)} possible changes "
+    print(f"Faults injected: one change at a time, each of the {len(chosen)} possible changes "
           f"in {len(MODULES)} of the 12 modules.")
     print(f"\n{'Module':<14}{'Injected':>9}{'Caught':>8}{'Survived':>10}")
     for module in MODULES:
