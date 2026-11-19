@@ -1,13 +1,16 @@
 """Tests for the saved bookings and the seat ledger."""
 
 import json
+import os
 import tempfile
+import threading
+import time
 import unittest
 from datetime import datetime
 from unittest import mock
 from pathlib import Path
 
-from busbidder.booking import BookingService, BookingStore, SeatLedger, random_code
+from busbidder.booking import LOCK_STALE_SECONDS, BookingService, BookingStore, SeatLedger, random_code
 from busbidder.exceptions import BookingError, BookingNotFoundError, DataFileError, NoSeatsError
 from busbidder.models import STATUS_CANCELLED, Booking
 from busbidder.validation import is_booking_reference
@@ -199,6 +202,91 @@ class ServiceTestCase(unittest.TestCase):
             now=lambda: datetime(2026, 11, 20, 9, 15, 42),
             make_code=make_code or (lambda: next(self.codes)),
         )
+
+
+class LockTests(ServiceTestCase):
+    """Two copies of the program must not change the bookings file at the same moment."""
+
+    def test_the_lock_is_held_during_the_change_and_removed_after_it(self):
+        self.assertFalse(self.store.lock_path.exists())
+        with self.store.locked():
+            self.assertTrue(self.store.lock_path.exists())
+        self.assertFalse(self.store.lock_path.exists())
+
+    def test_a_held_lock_stops_a_second_booking_with_a_clear_message(self):
+        impatient = BookingStore(self.store.path, wait_seconds=0.1)
+        service = BookingService(impatient, self.departures, self.fares)
+        with self.store.locked():
+            with self.assertRaises(DataFileError) as caught:
+                service.book("SR-MAL-0001-B", 1)
+            self.assertIn("is in use by another copy of the program, so nothing was changed",
+                          str(caught.exception))
+            # The run that holds the lock keeps it.
+            self.assertTrue(self.store.lock_path.exists())
+        self.assertEqual(self.store.load(), [])
+
+    def test_a_second_booking_goes_through_once_the_lock_is_free(self):
+        with self.store.locked():
+            pass
+        self.assertEqual(self.service.book("SR-MAL-0001-B", 1).passengers, 1)
+
+    def test_a_lock_left_behind_by_a_stopped_run_is_removed(self):
+        self.store.lock_path.write_text("", encoding="utf-8")
+        long_ago = time.time() - LOCK_STALE_SECONDS - 5
+        os.utime(self.store.lock_path, (long_ago, long_ago))
+        self.service.book("SR-MAL-0001-B", 1)
+        self.assertEqual(len(self.store.load()), 1)
+        self.assertFalse(self.store.lock_path.exists())
+
+    def test_a_fresh_lock_is_not_taken_for_a_stale_one(self):
+        self.store.lock_path.write_text("", encoding="utf-8")
+        impatient = BookingStore(self.store.path, wait_seconds=0.05)
+        with self.assertRaises(DataFileError):
+            with impatient.locked():
+                self.fail("the lock of another run was taken")
+        self.assertTrue(self.store.lock_path.exists())
+
+    def test_the_lock_is_removed_when_the_booking_is_refused_or_the_save_fails(self):
+        with self.assertRaises(NoSeatsError):
+            self.service.book("SR-MAL-0002-B", 1)
+        self.assertFalse(self.store.lock_path.exists())
+        with mock.patch("busbidder.booking.os.replace", side_effect=OSError("disk full")):
+            with self.assertRaises(DataFileError):
+                self.service.book("SR-MAL-0001-B", 1)
+        self.assertFalse(self.store.lock_path.exists())
+        with self.assertRaises(BookingNotFoundError):
+            self.service.cancel("BB-20261120-ZZZZZZ")
+        self.assertFalse(self.store.lock_path.exists())
+
+    def test_eight_bookings_at_once_for_three_seats_save_exactly_three(self):
+        # Without the lock, several threads read "3 seats left" before any
+        # of them writes, and bookings are lost or the bus is overbooked.
+        outcomes = []
+
+        def book_one_seat() -> None:
+            service = BookingService(BookingStore(self.store.path), self.departures, self.fares)
+            try:
+                outcomes.append(service.book("SR-MAL-0001-B", 1).reference)
+            except NoSeatsError:
+                outcomes.append("sold out")
+
+        threads = [threading.Thread(target=book_one_seat) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        confirmed = {outcome for outcome in outcomes if outcome != "sold out"}
+        self.assertEqual(len(outcomes), 8)
+        self.assertEqual(len(confirmed), 3)
+        self.assertEqual({booking.reference for booking in self.store.load()}, confirmed)
+        self.assertEqual(self.service.seats_left("SR-MAL-0001"), 0)
+
+    def test_each_run_writes_through_its_own_temporary_file(self):
+        with mock.patch("busbidder.booking.os.replace", side_effect=OSError("stop here")) as replace:
+            with self.assertRaises(DataFileError):
+                self.store.save([make_booking()])
+        temporary = Path(replace.call_args.args[0])
+        self.assertEqual(temporary.name, f"bookings.json.{os.getpid()}.tmp")
 
 
 class BookingServiceTests(ServiceTestCase):

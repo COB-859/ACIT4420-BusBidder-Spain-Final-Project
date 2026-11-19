@@ -1,34 +1,34 @@
 8 travellers each book 1 seat on SR-VAL-0002-S at the same moment. The bus has 2 seats.
-The README states that the program is made for one user at a time.
+A lock on the bookings file should make the copies of the program take turns.
 
 Round       Told  Bookings  Confirmed,  Saved, but      Told       Told
        confirmed     saved   not saved told failed  sold out  not saved
 1              2         2           0           0         6          0
 2              2         2           0           0         6          0
-3              3         2           3           2         3          2
-4              2         2           1           1         3          3
+3              2         2           0           0         6          0
+4              2         2           0           0         6          0
 5              2         2           0           0         6          0
-6              2         2           1           1         5          1
-7              4         2           2           0         4          0
-8              2         2           1           1         4          2
+6              2         2           0           0         6          0
+7              2         2           0           0         6          0
+8              2         2           0           0         6          0
 9              2         2           0           0         6          0
-10             3         2           2           1         4          1
-11             3         2           1           0         5          0
+10             2         2           0           0         6          0
+11             2         2           0           0         6          0
 12             2         2           0           0         6          0
 13             2         2           0           0         6          0
-14             2         2           1           1         5          1
-15             4         2           2           0         4          0
-16             3         2           1           0         5          0
+14             2         2           0           0         6          0
+15             2         2           0           0         6          0
+16             2         2           0           0         6          0
 17             2         2           0           0         6          0
-18             3         2           2           1         2          3
+18             2         2           0           0         6          0
 19             2         2           0           0         6          0
-20             3         2           1           0         5          0
+20             2         2           0           0         6          0
 
 Over 20 rounds:
-  rounds in which every traveller was told what was saved: 8
+  rounds in which every traveller was told what was saved: 20
   rounds in which the bus was overbooked: 0
-  travellers told 'confirmed' for a booking that was not saved: 18
-  bookings saved although the traveller was told it failed: 8
+  travellers told 'confirmed' for a booking that was not saved: 0
+  bookings saved although the traveller was told it failed: 0
   travellers who got any other answer: 0
 'Told not saved' is the error 'cannot write bookings file'. 'Saved, but told failed' counts the
 bookings among them that were saved all the same: they hold a seat the traveller does not know of.

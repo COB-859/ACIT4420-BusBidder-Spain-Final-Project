@@ -11,8 +11,10 @@ import json
 import logging
 import os
 import secrets
+import time
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -43,13 +45,77 @@ REFERENCE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 REFERENCE_CODE_LENGTH = 6
 MAX_REFERENCE_ATTEMPTS = 100
 
+# Two copies of the program must not change the bookings file at the same
+# moment. Whoever changes it first creates a lock file; the others wait.
+LOCK_WAIT_SECONDS = 10.0
+LOCK_RETRY_SECONDS = 0.02
+# A lock this old was left behind by a run that was stopped, not by one
+# that is still working: reading and writing the file takes milliseconds.
+LOCK_STALE_SECONDS = 30.0
+
 
 class BookingStore:
     """Reads and writes the bookings file."""
 
-    def __init__(self, path: Path) -> None:
-        """Remember where the bookings file is."""
+    def __init__(self, path: Path, wait_seconds: float = LOCK_WAIT_SECONDS) -> None:
+        """Remember where the bookings file is and how long to wait for its lock."""
         self.path = path
+        self.wait_seconds = wait_seconds
+
+    @property
+    def lock_path(self) -> Path:
+        """The lock file that marks the bookings file as being changed."""
+        return self.path.with_name(self.path.name + ".lock")
+
+    @contextmanager
+    def locked(self) -> Iterator[None]:
+        """Hold the bookings file for one read, change and write.
+
+        Creating a file that must not exist yet is one step for the
+        operating system, on Windows and on Linux, so only one copy of the
+        program can hold the lock. The others try again until it is free.
+        Without the lock, two copies read the same bookings and the second
+        to write wipes out the booking of the first.
+        """
+        deadline = time.monotonic() + self.wait_seconds
+        while True:
+            try:
+                self.path.parent.mkdir(parents=True, exist_ok=True)
+                handle = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                break
+            except (FileExistsError, PermissionError):
+                # PermissionError: on Windows, the lock is being removed right now.
+                if self._lock_is_stale():
+                    self._remove_lock()
+                    continue
+                if time.monotonic() >= deadline:
+                    raise DataFileError(
+                        f"the bookings file {self.path} is in use by another copy of the "
+                        "program, so nothing was changed. Try again in a moment"
+                    ) from None
+                time.sleep(LOCK_RETRY_SECONDS)
+            except OSError as error:
+                raise DataFileError(f"cannot lock bookings file {self.path}: {error}") from error
+        os.close(handle)
+        try:
+            yield
+        finally:
+            self._remove_lock()
+
+    def _lock_is_stale(self) -> bool:
+        """Return True when the lock is too old to belong to a run that is still working."""
+        try:
+            return time.time() - self.lock_path.stat().st_mtime > LOCK_STALE_SECONDS
+        except OSError:
+            return False        # the lock has just gone, so try again
+
+    def _remove_lock(self) -> None:
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError as error:
+            # Nothing more can be done here. The lock goes stale and the
+            # next run removes it, and the log says what happened.
+            logger.warning("Could not remove the lock %s: %s", self.lock_path, error)
 
     def load(self) -> list[Booking]:
         """Return the saved bookings. No file yet means no bookings."""
@@ -96,7 +162,8 @@ class BookingStore:
     def save(self, bookings: Iterable[Booking]) -> None:
         """Write all bookings. A crash cannot leave half a file behind."""
         text = json.dumps([booking.to_dict() for booking in bookings], indent=2)
-        temporary = self.path.with_name(self.path.name + ".tmp")
+        # The process number keeps two copies of the program from sharing one temporary file.
+        temporary = self.path.with_name(f"{self.path.name}.{os.getpid()}.tmp")
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             temporary.write_text(text + "\n", encoding="utf-8")
@@ -195,37 +262,40 @@ class BookingService:
                 "Use an offer ID from the search results, such as CL-MAL-0007-S."
             )
         departure = self._departures[fare.departure_id]
-        bookings = self._store.load()
-        # Seats are counted again here, because another booking may have
-        # been saved since the traveller saw the ranking.
-        left = SeatLedger(self._departures, bookings).seats_left(departure.departure_id)
-        bus = (
-            f"{departure.company.name} bus to {departure.destination.name}, "
-            f"{departure.departure:%a %d %b %H:%M}"
-        )
-        if left == 0:
-            raise NoSeatsError(
-                f"this bus is sold out ({bus}). "
-                "Search again to see buses that still have seats."
+        # Reading, checking and writing happen under the lock, so no other copy
+        # of the program can book the same seats in between.
+        with self._store.locked():
+            bookings = self._store.load()
+            # Seats are counted again here, because another booking may have
+            # been saved since the traveller saw the ranking.
+            left = SeatLedger(self._departures, bookings).seats_left(departure.departure_id)
+            bus = (
+                f"{departure.company.name} bus to {departure.destination.name}, "
+                f"{departure.departure:%a %d %b %H:%M}"
             )
-        if left < passengers:
-            raise NoSeatsError(
-                f"this bus has only {count_of(left, 'seat')} left, but you asked for "
-                f"{passengers} ({bus}). Try fewer passengers or another bus."
+            if left == 0:
+                raise NoSeatsError(
+                    f"this bus is sold out ({bus}). "
+                    "Search again to see buses that still have seats."
+                )
+            if left < passengers:
+                raise NoSeatsError(
+                    f"this bus has only {count_of(left, 'seat')} left, but you asked for "
+                    f"{passengers} ({bus}). Try fewer passengers or another bus."
+                )
+            moment = self._now()
+            booking = Booking(
+                reference=self._new_reference(moment, {saved.reference for saved in bookings}),
+                passengers=passengers,
+                total_price=round(fare.price * passengers, 2),
+                fare=fare,
+                company_name=departure.company.name,
+                destination_name=departure.destination.name,
+                departure=departure.departure,
+                arrival=departure.arrival,
+                booked_at=moment.replace(second=0, microsecond=0),
             )
-        moment = self._now()
-        booking = Booking(
-            reference=self._new_reference(moment, {saved.reference for saved in bookings}),
-            passengers=passengers,
-            total_price=round(fare.price * passengers, 2),
-            fare=fare,
-            company_name=departure.company.name,
-            destination_name=departure.destination.name,
-            departure=departure.departure,
-            arrival=departure.arrival,
-            booked_at=moment.replace(second=0, microsecond=0),
-        )
-        self._store.save([*bookings, booking])
+            self._store.save([*bookings, booking])
         logger.info(
             "Booked %s: offer %s, %d passenger(s), %.2f EUR, %d seat(s) left on %s",
             booking.reference, fare.offer_id, passengers, booking.total_price,
@@ -242,25 +312,26 @@ class BookingService:
         wanted = reference.strip().upper()
         if not is_booking_reference(wanted):
             raise BookingError(f"booking reference must look like BB-20261120-7K3QX9: {reference!r}")
-        bookings = self._store.load()
-        booking = next((saved for saved in bookings if saved.reference == wanted), None)
-        if booking is None:
-            raise BookingNotFoundError(
-                f"no booking found with the reference {wanted}. "
-                "The bookings command lists your references."
-            )
-        if not booking.is_active:
-            raise BookingError(
-                f"booking {wanted} is already cancelled. "
-                f"Its refund was {booking.refund_amount or 0:.2f} EUR."
-            )
-        # The refund follows the fare conditions stored with the booking,
-        # not the data files, which may have changed since.
-        refund = round(booking.total_price * booking.fare.refund_percent / 100, 2)
-        booking.status = STATUS_CANCELLED
-        booking.refund_amount = refund
-        booking.payment_status = PAYMENT_REFUNDED if refund > 0 else PAYMENT_NOT_REFUNDED
-        self._store.save(bookings)
+        with self._store.locked():
+            bookings = self._store.load()
+            booking = next((saved for saved in bookings if saved.reference == wanted), None)
+            if booking is None:
+                raise BookingNotFoundError(
+                    f"no booking found with the reference {wanted}. "
+                    "The bookings command lists your references."
+                )
+            if not booking.is_active:
+                raise BookingError(
+                    f"booking {wanted} is already cancelled. "
+                    f"Its refund was {booking.refund_amount or 0:.2f} EUR."
+                )
+            # The refund follows the fare conditions stored with the booking,
+            # not the data files, which may have changed since.
+            refund = round(booking.total_price * booking.fare.refund_percent / 100, 2)
+            booking.status = STATUS_CANCELLED
+            booking.refund_amount = refund
+            booking.payment_status = PAYMENT_REFUNDED if refund > 0 else PAYMENT_NOT_REFUNDED
+            self._store.save(bookings)
         logger.info(
             "Cancelled %s: %d seat(s) freed on %s, refund %.2f EUR",
             wanted, booking.passengers, booking.departure_id, refund,

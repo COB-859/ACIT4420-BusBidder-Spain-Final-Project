@@ -389,7 +389,7 @@ def explore_simultaneous_bookings(rounds: int = 20, travellers: int = 8) -> int:
     offer = "SR-VAL-0002-S"
     seats = load_all(DATA).departures["SR-VAL-0002"].seats
     print(f"{travellers} travellers each book 1 seat on {offer} at the same moment. The bus has {seats} seats.")
-    print("The README states that the program is made for one user at a time.\n")
+    print("A lock on the bookings file should make the copies of the program take turns.\n")
     print(f"{'Round':<6}{'Told':>10}{'Bookings':>10}{'Confirmed,':>12}{'Saved, but':>12}{'Told':>10}{'Told':>11}")
     print(f"{'':<6}{'confirmed':>10}{'saved':>10}{'not saved':>12}{'told failed':>12}{'sold out':>10}{'not saved':>11}")
     totals = {"lost": 0, "ghost": 0, "overbooked": 0, "clean": 0, "other": 0}

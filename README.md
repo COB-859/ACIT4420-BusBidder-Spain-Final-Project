@@ -120,7 +120,7 @@ Every action says whether it worked and what changed. A search, a comparison, a 
 | Option | Default | Meaning |
 |---|---|---|
 | `--data` | `data` | Folder with the input files. |
-| `--state` | `state` | Folder where bookings are saved (`bookings.json`). Created when the first booking is made. |
+| `--state` | `state` | Folder where bookings are saved (`bookings.json`). Created when a booking is first attempted. |
 | `--logs` | `logs` | Folder for the log file (`busbidder.log`). |
 | `--output` | `output` | Folder for `rejected_records.txt`. |
 
@@ -242,7 +242,7 @@ python3 tools/generate_data.py
 | `logs/busbidder.log` | Commands, load counts, rejected rows, sold-out departures, searches, bookings, cancellations and errors. |
 | `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. The file is checked when it is read, so a hand-edited value that is not valid stops the command with an error. |
 
-The program is made for one user at a time. Two copies of the program that book at the same moment can overwrite each other's booking: a traveller can be told that a booking is confirmed when it was not saved, or that saving failed when the booking was saved. `output/exploratory_simultaneous_bookings.txt` shows how often.
+Two copies of the program can book at the same moment. While one copy reads, changes and writes `bookings.json` it holds a lock file, `bookings.json.lock`, and the others wait for up to 10 seconds. A copy that cannot get the lock in that time stops with an error and changes nothing. A lock older than 30 seconds is taken to be left over from a run that was stopped, and is removed. `output/exploratory_simultaneous_bookings.txt` shows 8 bookings started at once for a bus with 2 seats, 20 times: every traveller is told what was saved. Before the lock was added (commit `8690e83`) that held in 8 of 20 rounds. The lock protects against copies on the same computer; a shared network folder was not tested.
 
 ## Example output (in `output/`)
 
