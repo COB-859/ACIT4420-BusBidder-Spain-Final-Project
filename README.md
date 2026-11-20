@@ -79,7 +79,7 @@ python3 main.py change --ref BB-20261120-7K3QX9 --offer CL-MAL-0009-S
 python3 main.py cancel --ref BB-20261120-7K3QX9
 ```
 
-Use the reference printed by `book` in the `change` and `cancel` commands. A ticket can be changed when its fare is changeable, to another bus or fare of the same company and destination. The traveller pays the change fee per passenger and the difference when the new ticket costs more; a cheaper ticket gives no money back. The fee follows the fare conditions stored with the booking, and the reference stays the same. A booking is saved in `state/` and takes a seat, so later searches show one seat fewer on that bus. Delete the `state` folder to start again with no bookings.
+Use the reference printed by `book` in the `change` and `cancel` commands. A ticket can be changed when its fare is changeable, to another bus or fare of the same company and destination. The traveller pays the change fee per passenger and the difference when the new ticket costs more; a cheaper ticket gives no money back. After a change the booking holds the price and conditions of the new ticket, so a later refund is worked out from that price: the change fee and a higher price paid earlier are not refunded. The fee follows the fare conditions stored with the booking, and the reference stays the same. A booking is saved in `state/` and takes a seat, so later searches show one seat fewer on that bus. Delete the `state` folder to start again with no bookings.
 
 ### What the program tells the traveller
 
@@ -87,15 +87,15 @@ Every action says whether it worked and what changed. A search, a comparison, a 
 
 | Action | Feedback |
 |---|---|
-| Search | The ranking and the explanation, then the exact command to book the top offer. A bus that could not take the party twice gets the note `only 1 seat left on this bus`: one passenger is warned at the last seat, a party of four below eight seats. When the first two offers are less than 1 point apart, a note says that a small change in the weights can change the winner. |
-| Search with no result | What is wrong with the offers and the value that would work, for example `47 of the 47 offers cost more than your budget of 20.00 EUR. The cheapest offer that meets your other requirements costs 29.98 EUR.` The value is taken from the offers that fail only that requirement, so it is one the traveller can act on. The advice is about a requirement whose change alone gives offers; when several qualify, the one that removed the most offers is used. When every offer fails two requirements or more, the program says that changing one requirement alone is not enough. When the dates have no buses, it names the days that do: `BusBidder has buses from 10 July 2027 to 16 July 2027.` |
+| Search | The ranking and the explanation, then the exact command to book the top offer. A bus that could not take the party twice gets the note `only 1 seat left on this bus`: one passenger is warned at the last seat, a party of four below eight seats. When the first two offers are less than 1 point apart but not equal, a note says that a small change in the weights can change the winner; an exact tie is decided by the tie rule. |
+| Search with no result | What is wrong with the offers and the value that would work, for example `47 of the 47 offers cost more than your budget of 20.00 EUR. The cheapest offer that meets your other requirements costs 29.98 EUR.` The value is taken from the offers that fail only that requirement, so it is one the traveller can act on. The advice is about a requirement whose change alone gives offers; when several qualify, the one that removed the most offers is used, and on a tie the first of seats, budget, transfers, duration, changeable, refundable and luggage. When the buses that fail only the seat condition are sold out, the program says so and suggests other dates. When every offer fails two requirements or more, the program says that changing one requirement alone is not enough. When the dates have no buses, it names the days that do: `BusBidder has buses from 10 July 2027 to 16 July 2027.` |
 | Book | `Booking confirmed: 2 flex seats to Malaga for 95.48 EUR.`, the reference, and the seats left on that bus, or `This bus is now sold out.` |
-| Book a full bus | `Not booked: this bus is sold out (SolRuta bus to Valencia, Sat 10 Jul 13:15).`, or how many seats are left. A full bus is not a mistake by the traveller, so the line does not start with `Error`. |
+| Book a full bus | `Not booked: this bus is sold out (SolRuta bus to Cordoba, Sat 10 Jul 08:15). Search again to see buses that still have seats.`, or how many seats are left. A full bus is not a mistake by the traveller, so the line does not start with `Error`. |
 | Change | `Booking BB-... is changed: 2 standard seats to Malaga, now leaving Wed 14 Jul 09:15.`, then `To pay: 24.00 EUR (change fee 20.00 EUR, higher ticket price 4.00 EUR).` or `Nothing to pay: the change is free and the new ticket does not cost more.` |
 | Change a ticket that cannot be changed | `Not changed: this basic ticket cannot be changed. You can cancel it with the cancel command and book another bus.` The same form is used when the new bus is full or belongs to another company or destination, and the booking is left as it was. |
-| Cancel | `Booking BB-... is cancelled: 2 flex seats to Malaga.`, then `Refund: 85.93 EUR (90% of the 95.48 EUR paid).` or `No refund, because this basic ticket is not refundable.` |
+| Cancel | `Booking BB-... is cancelled: 2 flex seats to Malaga.`, then `Refund: 85.93 EUR (90% of the ticket price of 95.48 EUR).` or `No refund, because this basic ticket is not refundable.` |
 | Bookings | The list with the refund of each cancelled booking, a count of confirmed and cancelled bookings, and how to change or cancel. |
-| A mistake on the command line | One line with the reason and the command that shows the options. |
+| A mistake on the command line | One line with the reason, then one line with the command that shows the options. |
 
 ### Options of `search` and `compare`
 
@@ -123,9 +123,11 @@ Every action says whether it worked and what changed. A search, a comparison, a 
 | Option | Default | Meaning |
 |---|---|---|
 | `--data` | `data` | Folder with the input files. |
-| `--state` | `state` | Folder where bookings are saved (`bookings.json`). Created when a booking is first attempted. |
+| `--state` | `state` | Folder where bookings are saved (`bookings.json`). Created the first time the `book`, `change` or `cancel` command reaches the bookings file. |
 | `--logs` | `logs` | Folder for the log file (`busbidder.log`). |
 | `--output` | `output` | Folder for `rejected_records.txt`. |
+
+Every command also takes `-h` or `--help`, and `python3 main.py --version` prints the version.
 
 ### Exit codes
 
@@ -133,7 +135,7 @@ Every action says whether it worked and what changed. A search, a comparison, a 
 |---|---|
 | 0 | The command ran. A search that finds no offer is also 0. |
 | 1 | An error was reported, for example a missing data file, an unknown destination, weights that do not total 100, or no seats left. An unexpected fault in the program also gives 1, with the details in the log file. |
-| 2 | The command line could not be understood, for example a missing option or `--passengers two`. The program prints one line with the reason and the command that shows the options. |
+| 2 | The command line could not be understood, for example a missing option or `--passengers two`. The program prints the reason and, on a second line, the command that shows the options. |
 
 ## Running the tests
 
@@ -159,9 +161,8 @@ python3 tools/exploratory_tests.py alternatives
 |---|---|
 | `edge` | Runs 75 unusual commands, such as a date that does not exist, 1000 passengers or a booking on a full bus, and prints the exit code and the feedback for each. |
 | `rules` | Runs 1,000 random searches, 600 random bookings and cancellations and 1,500 random command lines, and checks rules that must hold for any input, for example that every ranked offer meets every mandatory condition (each of them is set in part of the random searches) and that a bus never has more seats booked than it has. |
-| `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares the booking reference each traveller was told with the references that were saved. It counts the confirmations for a booking that was not saved, and the bookings that were saved although the traveller was told that saving failed. |
-| `trials` | Measures how stable and how even-handed the ranking is: how much each criterion really decides in the specification's example, which company each profile recommends over 60 requests (15 cities with 4 departure periods), and how often the first two offers are less than 1 point apart or exactly equal. |
-
+| `race` | Starts 8 bookings at the same moment for a bus with 2 seats, 20 times, and compares the booking reference each traveller was told with the references that were saved. It counts the confirmations for a booking that was not saved, and the saved bookings that no traveller was told were confirmed. |
+| `trials` | Measures how stable and how even-handed the ranking is: how much each criterion really decides in the specification's example, which company each profile recommends over 60 requests (15 cities with 4 departure periods), how often the first two offers are less than 1 point apart or exactly equal, and how often the night company NocheVia ranks first for each preferred departure. |
 | `alternatives` | Measures choices of the scoring model against an alternative each, without changing the program: price on a relative scale against a fixed scale, how large a weight must be before the cheapest offer wins, where to draw the line for a near tie, and how often the winner changes when the weights move by 10 points. Two parts compare a rule the program has now with the rule it had before the measurement: the lowest reported points against the median for a missing emissions figure, and the refund percentage against refundable yes or no for flexibility. |
 
 `edge`, `rules`, `trials` and `alternatives` print the same result on every run. `race` depends on timing, so its result can differ between runs. The command ends with exit code 1 when `edge` finds a crash or `rules` finds a broken rule.
@@ -172,7 +173,7 @@ python3 tools/exploratory_tests.py alternatives
 python3 tools/fault_injection.py
 ```
 
-This checks the tests themselves. In a temporary copy of the project it makes one small change to the program at a time, such as `<` into `<=` or `and` into `or`, runs the unit tests and notes whether a test failed. A change that no test notices is listed as a survivor. Every possible change is tried, so the result is the same on every run. It takes about a quarter of an hour, and the project itself is not changed.
+This checks the tests themselves. In a temporary copy of the project it makes one small change to the program at a time, such as `<` into `<=` or `and` into `or`, runs the unit tests and notes whether a test failed. A change that no test notices is listed as a survivor. Every change of these kinds in the ten modules that hold rules is tried (the error classes and the log set-up are left out), so no sample is drawn and the result is the same on every run. It takes about ten minutes, and the project itself is not changed.
 
 ## How offers are filtered and ranked
 
@@ -241,9 +242,9 @@ python3 tools/generate_data.py
 
 | File | Content |
 |---|---|
-| `output/rejected_records.txt` | The rows set aside in the last run. Rewritten on every run. |
+| `output/rejected_records.txt` | The rows set aside in the last run. Rewritten on every run that loads the data files. |
 | `logs/busbidder.log` | Commands, load counts, rejected rows, sold-out departures, searches, bookings, changes, cancellations and errors. |
-| `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. The file is checked when it is read, so a hand-edited value that is not valid stops the command with an error. |
+| `state/bookings.json` | The saved bookings, cancelled ones included. The data files are never changed: seats left are the seats in `departures.csv` minus the seats of active bookings. The file is checked when it is read: a missing field, a value of the wrong kind or outside its range, or a total that is not the fare price times the passengers stops the command with an error. Not checked: whether a refund fits its percentage, whether the seats fit the bus, and whether the eight digits in a reference are a real date. Luggage has no upper limit. |
 
 Two copies of the program can book at the same moment. While one copy reads, changes and writes `bookings.json` it holds a lock file, `bookings.json.lock`, and the others wait for up to 10 seconds. A copy that cannot get the lock in that time stops with an error and changes nothing. A lock older than 30 seconds is taken to be left over from a run that was stopped, and is removed. `output/exploratory_simultaneous_bookings.txt` shows 8 bookings started at once for a bus with 2 seats, 20 times: every traveller is told what was saved. Before the lock was added that held in 8 of 20 rounds (the output saved at commit `d15b18f`). The fault can be reproduced at commit `8690e83`, the last one before the lock, but the figures vary from run to run. The lock protects against copies on the same computer; a shared network folder was not tested.
 
@@ -260,8 +261,8 @@ These files were produced with no saved bookings. With `state/` empty or absent,
 | `compare_santiago.txt` | `python3 main.py compare --destination "Santiago de Compostela" --date-from 2027-07-10 --date-to 2027-07-16 --depart night --budget 60 --passengers 2 --save output/compare_santiago.txt` |
 | `sensitivity_price_30.txt` | The `search_spec_example` command with `--weights price=30,duration=30,time=20,flex=20 --top 3` |
 | `sensitivity_price_50.txt` | The `search_spec_example` command with `--weights price=50,duration=20,time=10,flex=20 --top 3` |
-| `log_extract.txt` | Part of `logs/busbidder.log`: the whole `validate` run, then one line per command, search, comparison, booking, change, cancellation and error from the runs above and from eight further commands (an unknown city, weights that total 110, a booking, the booking list, a booking on a full bus, a change, a cancellation and a second cancellation of the same booking). |
-| `rejected_records.txt` | Written by every run. |
+| `log_extract.txt` | Part of `logs/busbidder.log`: the whole `validate` run, then the lines of each command, search, comparison, booking, change, cancellation and error (the command and the load count, then the result when the command logs one) from the runs above and from eight further commands (an unknown city, weights that total 110, a booking, the booking list, a booking on a full bus, a change, a cancellation and a second cancellation of the same booking). |
+| `rejected_records.txt` | Written by every run that loads the data files. |
 | `exploratory_edge_cases.txt` | `python3 tools/exploratory_tests.py edge > output/exploratory_edge_cases.txt` |
 | `exploratory_rules.txt` | `python3 tools/exploratory_tests.py rules > output/exploratory_rules.txt` |
 | `exploratory_trials.txt` | `python3 tools/exploratory_tests.py trials > output/exploratory_trials.txt` |
