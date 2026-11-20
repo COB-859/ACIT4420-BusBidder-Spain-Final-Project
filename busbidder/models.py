@@ -1,7 +1,14 @@
 """Domain classes: what the marketplace is made of.
 
-Each class checks its own values when it is created, so an object that
-exists is always a valid one.
+Company, Destination, Departure, Fare and Booking check their own values
+when they are created: for a number or a yes/no flag the kind of the
+value first, then its range. So an offer or a booking cannot hold a
+number of the wrong kind or outside its range. Offer checks that its fare
+belongs to its departure, and TravelRequest checks ranges and how its
+values fit together; both get values the program has already parsed.
+TimeBand and TravellerProfile have no checks of their own: a
+time band is built from clock times the program has parsed, and the
+weights of a profile are checked when they are used (ranking.check_weights).
 """
 
 from __future__ import annotations
@@ -14,13 +21,13 @@ from typing import Any
 
 from busbidder.exceptions import InvalidRecordError, InvalidRequestError
 from busbidder.validation import (
+    BOOKING_REFERENCE_PATTERN,
     COMPANY_CODE_PATTERN,
     DATETIME_FORMAT,
     DESTINATION_CODE_PATTERN,
     FARE_TYPES,
     RATING_MAX,
     RATING_MIN,
-    is_booking_reference,
     parse_clock_time,
     split_departure_id,
     split_offer_id,
@@ -33,6 +40,8 @@ MAX_REFUND_PERCENT = 100.0
 # more likely a typing error (3819 for 38.19) than a real price, and one
 # such value would flatten the price scores of every other offer.
 MAX_PLAUSIBLE_PRICE_EUR = 500.0
+# No bus has this many seats, so a saved booking for more people is a mistake.
+MAX_PLAUSIBLE_PASSENGERS = 1000
 
 STATUS_CONFIRMED = "confirmed"
 STATUS_CANCELLED = "cancelled"
@@ -64,6 +73,7 @@ class Company:
             raise InvalidRecordError(f"company code must be two capital letters: {self.code!r}")
         if not self.name.strip():
             raise InvalidRecordError("company name is missing")
+        _require_number("rating", self.rating)
         if not RATING_MIN <= self.rating <= RATING_MAX:
             raise InvalidRecordError(
                 f"rating is outside {RATING_MIN:g} to {RATING_MAX:g}: {self.rating:g}"
@@ -83,6 +93,7 @@ class Destination:
             raise InvalidRecordError(f"destination code must be three capital letters: {self.code!r}")
         if not self.name.strip():
             raise InvalidRecordError("destination name is missing")
+        _require_number("distance", self.distance_km)
         if self.distance_km <= 0:
             raise InvalidRecordError(f"distance must be above 0: {self.distance_km:g}")
 
@@ -117,6 +128,10 @@ class Departure:
             )
         if self.duration_minutes > MAX_DURATION_MINUTES:
             raise InvalidRecordError(f"journey is longer than 24 hours: {self.duration_minutes} minutes")
+        _require_whole_number("transfers", self.transfers)
+        _require_whole_number("seats", self.seats)
+        if self.emissions_kg is not None:
+            _require_number("emissions", self.emissions_kg)
         if self.transfers < 0:
             raise InvalidRecordError(f"transfers is negative: {self.transfers}")
         if self.seats < 0:
@@ -146,6 +161,8 @@ class Fare:
 
     def __post_init__(self) -> None:
         departure_id, fare_letter = split_offer_id(self.offer_id)
+        if self.offer_id != f"{departure_id}-{fare_letter}":
+            raise InvalidRecordError(f"offer ID has a space or a line break around it: {self.offer_id!r}")
         if departure_id != self.departure_id:
             raise InvalidRecordError(
                 f"offer ID {self.offer_id} does not match departure {self.departure_id}"
@@ -156,6 +173,15 @@ class Fare:
             raise InvalidRecordError(
                 f"offer ID {self.offer_id} does not match fare type {self.fare_type}"
             )
+        # A fare can come from the bookings file, which a person may have
+        # edited, so the kind of each value is checked before its range.
+        _require_number("price", self.price)
+        _require_number("change fee", self.change_fee)
+        _require_number("refund percent", self.refund_percent)
+        _require_whole_number("luggage", self.luggage_kg)
+        for label, flag in (("changeable", self.changeable), ("refundable", self.refundable)):
+            if not isinstance(flag, bool):
+                raise InvalidRecordError(f"{label} must be yes or no: {flag!r}")
         if self.price <= 0:
             raise InvalidRecordError(f"price must be above 0: {self.price:g}")
         if self.price > MAX_PLAUSIBLE_PRICE_EUR:
@@ -164,6 +190,10 @@ class Fare:
             )
         if self.change_fee < 0:
             raise InvalidRecordError(f"change fee is negative: {self.change_fee:g}")
+        if self.change_fee > MAX_PLAUSIBLE_PRICE_EUR:
+            raise InvalidRecordError(
+                f"change fee is implausibly high (above {MAX_PLAUSIBLE_PRICE_EUR:g} EUR): {self.change_fee:g}"
+            )
         if not self.changeable and self.change_fee > 0:
             raise InvalidRecordError(
                 f"changeable is no but the change fee is {self.change_fee:g}"
@@ -287,12 +317,30 @@ def _is_whole_number(value: object) -> bool:
 
 def _is_amount(value: object) -> bool:
     """Return True for a finite number of at least 0 that is not a bool."""
-    return (
-        isinstance(value, Real)
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-        and value >= 0
-    )
+    return _is_number(value) and value >= 0
+
+
+def _is_number(value: object) -> bool:
+    """Return True for a finite number that is not a bool."""
+    if not isinstance(value, Real) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        # A whole number too large for a float, such as one of 400 digits.
+        return False
+
+
+def _require_number(label: str, value: object) -> None:
+    """Refuse a value that is not a finite number, before its range is checked."""
+    if not _is_number(value):
+        raise InvalidRecordError(f"{label} is not a number: {value!r}")
+
+
+def _require_whole_number(label: str, value: object) -> None:
+    """Refuse a value that is not a whole number, before its range is checked."""
+    if not _is_whole_number(value):
+        raise InvalidRecordError(f"{label} is not a whole number: {value!r}")
 
 
 def _minute_of_day(clock: time) -> int:
@@ -379,11 +427,15 @@ class Booking:
 
     def __post_init__(self) -> None:
         # A booking can come from the bookings file, which a person may have
-        # edited, so every value is checked here as well.
-        if not isinstance(self.reference, str) or not is_booking_reference(self.reference):
+        # edited, so the kind and the range of every value are checked here
+        # as well, and that the total fits the price and the passengers.
+        # Whether a refund fits its percentage is not checked.
+        if not isinstance(self.reference, str) or not BOOKING_REFERENCE_PATTERN.fullmatch(self.reference):
             raise InvalidRecordError(f"booking reference has the wrong form: {self.reference!r}")
         if not _is_whole_number(self.passengers) or self.passengers < 1:
             raise InvalidRecordError(f"passengers must be a whole number of at least 1: {self.passengers!r}")
+        if self.passengers > MAX_PLAUSIBLE_PASSENGERS:
+            raise InvalidRecordError(f"passengers is implausibly high (above {MAX_PLAUSIBLE_PASSENGERS})")
         if not _is_amount(self.total_price):
             raise InvalidRecordError(f"total price must be a number of at least 0: {self.total_price!r}")
         if self.refund_amount is not None and not _is_amount(self.refund_amount):
@@ -392,6 +444,24 @@ class Booking:
             raise InvalidRecordError(f"unknown booking status: {self.status!r}")
         if not isinstance(self.fare, Fare):
             raise InvalidRecordError("booking has no fare")
+        if self.total_price != round(self.fare.price * self.passengers, 2):
+            raise InvalidRecordError(
+                f"total price {self.total_price!r} is not the fare price times the passengers"
+            )
+        for label, text in (("company name", self.company_name), ("destination name", self.destination_name)):
+            # isprintable refuses a line break and a character that cannot be printed.
+            if not isinstance(text, str) or not text.strip() or not text.isprintable():
+                raise InvalidRecordError(f"{label} is missing or is not plain text: {text!r}")
+        if self.payment_status not in (PAYMENT_SIMULATED, PAYMENT_REFUNDED, PAYMENT_NOT_REFUNDED):
+            raise InvalidRecordError(f"unknown payment status: {self.payment_status!r}")
+        for label, moment in (("departure", self.departure), ("arrival", self.arrival),
+                              ("booking time", self.booked_at)):
+            if not isinstance(moment, datetime):
+                raise InvalidRecordError(f"{label} is not a date and time: {moment!r}")
+            if moment.year < 2000:
+                raise InvalidRecordError(f"{label} is before the year 2000: {moment.year}")
+        if self.arrival <= self.departure:
+            raise InvalidRecordError("arrival is not after departure")
 
     @property
     def offer_id(self) -> str:
@@ -428,7 +498,14 @@ class Booking:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Booking:
         """Rebuild a booking from saved values."""
+        if not isinstance(data, dict):
+            raise InvalidRecordError("booking record is not a set of named values")
         values = dict(data)
+        # These three have a default in the class, so a record without them
+        # would be read as a confirmed, paid booking.
+        missing = [name for name in ("status", "payment_status", "refund_amount") if name not in values]
+        if missing:
+            raise InvalidRecordError(f"booking record lacks {', '.join(missing)}")
         values["fare"] = Fare.from_dict(values["fare"])
         for name in ("departure", "arrival", "booked_at"):
             values[name] = datetime.strptime(values[name], DATETIME_FORMAT)

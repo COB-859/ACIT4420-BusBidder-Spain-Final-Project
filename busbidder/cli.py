@@ -61,7 +61,7 @@ logger = logging.getLogger("busbidder.cli")
 EXIT_OK = 0
 EXIT_ERROR = 1
 EXIT_USAGE = 2
-PLAIN_INTEGER = re.compile(r"-?\d+")
+PLAIN_INTEGER = re.compile(r"-?\d+", re.ASCII)
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_STATE_DIR = Path("state")
 DEFAULT_LOG_DIR = Path("logs")
@@ -285,7 +285,7 @@ def run_search(args: argparse.Namespace) -> int:
 
 
 def run_compare(args: argparse.Namespace) -> int:
-    """Rank the same offers under every profile and show the top offers side by side."""
+    """Rank the same offers under the chosen profiles (all by default) and show the top offers side by side."""
     refuse_data_folder(args.save, args.data)
     session = open_session(args)
     request = request_from_args(args, session)
@@ -382,7 +382,8 @@ def optional(convert: Callable[[str], object]) -> Callable[[str], object]:
 
 def to_number(text: str, kind: type, minimum: float, what: str):
     """Return the answer as a number of the given kind, at least minimum."""
-    # A plain number only, as in the data files and on the command line.
+    # A plain number only, as on the command line: an optional minus and digits for a
+    # whole number, and the data-file pattern for an amount.
     pattern = PLAIN_INTEGER if kind is int else DECIMAL_PATTERN
     if not pattern.fullmatch(text.strip()):
         raise ValueError(f"{what} must be a number")
@@ -546,7 +547,7 @@ def whole_number(minimum: int | None = None) -> Callable[[str], int]:
     """Return a converter for a whole number, at least minimum when one is given.
 
     Python's int() also accepts forms such as 1_0, which a traveller would
-    only type by mistake, so the text must consist of digits.
+    only type by mistake, so the text must be an optional minus sign and digits.
     """
 
     def convert(text: str) -> int:

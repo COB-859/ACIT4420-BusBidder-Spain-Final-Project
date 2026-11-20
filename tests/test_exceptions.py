@@ -11,6 +11,7 @@ from busbidder.exceptions import (
     InvalidRecordError,
     InvalidRequestError,
     NoSeatsError,
+    NotChangeableError,
     WeightError,
 )
 
@@ -28,6 +29,7 @@ class ExceptionHierarchyTests(unittest.TestCase):
             BookingError,
             NoSeatsError,
             BookingNotFoundError,
+            NotChangeableError,
         ):
             with self.subTest(error_class=error_class.__name__):
                 self.assertTrue(issubclass(error_class, BusBidderError))
@@ -35,6 +37,7 @@ class ExceptionHierarchyTests(unittest.TestCase):
     def test_booking_errors_share_booking_error(self):
         self.assertTrue(issubclass(NoSeatsError, BookingError))
         self.assertTrue(issubclass(BookingNotFoundError, BookingError))
+        self.assertTrue(issubclass(NotChangeableError, BookingError))
 
     def test_identifier_error_is_a_record_error(self):
         self.assertTrue(issubclass(InvalidIdentifierError, InvalidRecordError))

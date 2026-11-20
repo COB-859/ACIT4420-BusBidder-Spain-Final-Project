@@ -16,10 +16,12 @@ from busbidder.exceptions import InvalidIdentifierError, InvalidRecordError
 # natural check. Named groups let the caller read the parts back.
 COMPANY_CODE_PATTERN = re.compile(r"^[A-Z]{2}$")
 DESTINATION_CODE_PATTERN = re.compile(r"^[A-Z]{3}$")
-DEPARTURE_ID_PATTERN = re.compile(r"^(?P<company>[A-Z]{2})-(?P<destination>[A-Z]{3})-(?P<serial>\d{4})$")
-OFFER_ID_PATTERN = re.compile(r"^(?P<departure>[A-Z]{2}-[A-Z]{3}-\d{4})-(?P<fare>[BSF])$")
+# re.ASCII: without it \d also matches digits from other scripts.
+DEPARTURE_ID_PATTERN = re.compile(
+    r"^(?P<company>[A-Z]{2})-(?P<destination>[A-Z]{3})-(?P<serial>\d{4})$", re.ASCII)
+OFFER_ID_PATTERN = re.compile(r"^(?P<departure>[A-Z]{2}-[A-Z]{3}-\d{4})-(?P<fare>[BSF])$", re.ASCII)
 # The reference leaves out I, O, 0 and 1 because they are easy to misread.
-BOOKING_REFERENCE_PATTERN = re.compile(r"^BB-(?P<date>\d{8})-(?P<code>[A-HJ-NP-Z2-9]{6})$")
+BOOKING_REFERENCE_PATTERN = re.compile(r"^BB-(?P<date>\d{8})-(?P<code>[A-HJ-NP-Z2-9]{6})$", re.ASCII)
 CLOCK_TIME_PATTERN = re.compile(r"^(?P<hour>[01]?\d|2[0-3]):(?P<minute>[0-5]\d)$", re.ASCII)
 DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$", re.ASCII)
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$", re.ASCII)
@@ -50,7 +52,11 @@ def parse_int(value: str | None, field: str, minimum: int | None = None) -> int:
     text = require_text(value, field)
     if not INTEGER_PATTERN.match(text):
         raise InvalidRecordError(f"{field} is not a whole number: {text!r}")
-    number = int(text)
+    try:
+        number = int(text)
+    except ValueError:
+        # Python refuses to convert a number of more than 4,300 digits.
+        raise InvalidRecordError(f"{field} has too many digits") from None
     if minimum is not None and number < minimum:
         raise InvalidRecordError(f"{field} is below {minimum}: {number}")
     return number
@@ -142,5 +148,8 @@ def split_offer_id(value: str | None) -> tuple[str, str]:
 
 
 def is_booking_reference(value: str | None) -> bool:
-    """Return True when the text has the form of a booking reference."""
+    """Return True when the text, without spaces around it, has the form of a booking reference.
+
+    The eight digits are not checked as a real date.
+    """
     return bool(BOOKING_REFERENCE_PATTERN.match((value or "").strip()))

@@ -140,6 +140,9 @@ class ChangeTests(ServiceTestCase):
         with self.assertRaises(NotChangeableError):
             self.service.change(booking.reference, "SR-MAL-0003-S")
         self.assertFalse(self.store.lock_path.exists())
+        changeable = self.service.book("SR-MAL-0001-S", 1)
+        self.service.change(changeable.reference, "SR-MAL-0003-S")
+        self.assertFalse(self.store.lock_path.exists())
 
     def test_a_refund_after_a_change_follows_the_new_ticket(self):
         booking = self.service.book("SR-MAL-0001-S", 1)             # not refundable

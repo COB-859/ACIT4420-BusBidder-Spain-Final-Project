@@ -39,7 +39,7 @@
    it refunds. Now the 50 points are multiplied by the refund percentage.
    The 60 requests without a budget, 4 profiles: 240 rankings.
                                                                   Percent  Yes/no
-   A ticket that refunds less than 90 percent ranks first              60      96
+   A partial refund (above 0, under 90 percent) ranks first            60      96
    First two offers more than 0 and less than 1 point apart           105     102
    The two rules recommend the same offer in 204 of 240 rankings.
 

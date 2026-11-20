@@ -182,6 +182,8 @@ class SearchOptionEdgeTests(CliTestCase):
         code, text = self.run_main("search", *MALAGA, "--profile", "budget", "--top", "0")
         self.assertEqual(code, EXIT_OK)
         self.assertIn("#1  ", text)
+        self.assertIn("#4  ", text)
+        self.assertNotIn("Showing", text)
 
     def test_a_result_is_saved_two_new_folders_deep(self):
         target = self.folder / "one" / "two" / "result.txt"

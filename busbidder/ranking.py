@@ -47,9 +47,11 @@ def parse_weights(text: str) -> dict[str, float]:
 def check_weights(weights: Mapping[str, float]) -> dict[str, float]:
     """Return the weights as percentages, or raise WeightError.
 
-    Accepted: percentages that total 100, or fractions that total 1.0.
-    Nothing is rescaled silently. Criteria with weight 0 are left out of
-    the result, so they are neither calculated nor shown.
+    Accepted: percentages that total 100, or fractions that total 1.0, with
+    a weight above 0 for each of price, duration, time and flex. Nothing is
+    rescaled silently. An optional criterion (transfers, rating, emissions)
+    with weight 0 is left out of the result, so it is neither calculated
+    nor shown.
     """
     unknown = [name for name in weights if name not in CRITERIA]
     if unknown:
@@ -116,8 +118,9 @@ def require_intended_dominance(weights: Mapping[str, float], intended: bool) -> 
         raise WeightError(f"{problem}. If that is intended, add --allow-dominant")
 
 
-# When the first two offers are closer than this, the traveller is told
-# that the recommendation is not stable.
+# When the first two totals are more than 0 and less than this apart, the
+# traveller is told that the recommendation is not stable. An exact tie is
+# explained by the tie rule instead.
 NEAR_TIE_POINTS = 1.0
 
 

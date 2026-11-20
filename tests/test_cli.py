@@ -43,7 +43,7 @@ class StartTests(CliTestCase):
         with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as caught:
             main(["--help"])
         self.assertEqual(caught.exception.code, 0)
-        for command in ("validate", "search", "compare", "book", "bookings"):
+        for command in ("validate", "search", "compare", "book", "bookings", "change", "cancel"):
             self.assertIn(command, output.getvalue())
 
     def test_version_option_exits_with_zero(self):
@@ -233,6 +233,8 @@ class SearchTests(CliTestCase):
             (["--max-duration", "360"], "seats 1, duration 2"),
             (["--refundable"], "seats 1, refundable 4"),
             (["--min-luggage", "20"], "seats 1, luggage 1"),
+            (["--budget", "50"], "seats 1, budget 1"),
+            (["--changeable"], "seats 1, changeable 1"),
         )
         for options, counts in cases:
             with self.subTest(options=options):
@@ -270,6 +272,7 @@ class SearchTests(CliTestCase):
         saved = target.read_text(encoding="utf-8")
         self.assertIn("#1  SR-MAL-0001-B", saved)
         self.assertIn(f"Saved to {target}", text)
+        self.assertTrue(text.startswith(saved))
 
     def test_search_is_recorded_in_the_log(self):
         self.run_main("search", *MALAGA, "--profile", "budget")
@@ -535,7 +538,7 @@ class CancelCommandTests(CliTestCase):
         self.assertEqual(code, EXIT_OK)
         self.assertIn("BOOKING CANCELLED", text)
         self.assertIn(f"Booking {reference} is cancelled: 2 flex seats to Malaga.", text)
-        self.assertIn("Refund: 108.00 EUR (90% of the 120.00 EUR paid).", text)
+        self.assertIn("Refund: 108.00 EUR (90% of the ticket price of 120.00 EUR).", text)
         self.assertIn("Payment:        refunded (simulated)", text)
         self.assertIn("Seats left on this bus: 20", text)
 

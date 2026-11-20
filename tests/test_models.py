@@ -1,7 +1,7 @@
 """Tests for the domain classes."""
 
 import unittest
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from busbidder.exceptions import InvalidIdentifierError, InvalidRecordError, InvalidRequestError
 from busbidder.models import (
@@ -41,6 +41,16 @@ class CompanyAndDestinationTests(unittest.TestCase):
             with self.subTest(code=code), self.assertRaises(InvalidRecordError):
                 Destination(code, name, distance)
 
+    def test_rating_and_distance_must_be_numbers(self):
+        for value in (float("nan"), float("inf"), True, "4", None):
+            with self.subTest(value=value):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Company("CE", "Camino Express", value)
+                self.assertIn("rating is not a number", caught.exception.reason)
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Destination("MAL", "Malaga", value)
+                self.assertIn("distance is not a number", caught.exception.reason)
+
 
 class DepartureTests(unittest.TestCase):
     def test_duration_is_calculated(self):
@@ -74,6 +84,23 @@ class DepartureTests(unittest.TestCase):
 
     def test_missing_emissions_is_allowed(self):
         self.assertIsNone(make_departure(emissions_kg=None).emissions_kg)
+
+    def test_seats_and_transfers_must_be_whole_numbers(self):
+        for value in (1.5, float("nan"), True, "2", None):
+            with self.subTest(value=value):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    make_departure(seats=value)
+                self.assertIn("seats is not a whole number", caught.exception.reason)
+                with self.assertRaises(InvalidRecordError) as caught:
+                    make_departure(transfers=value)
+                self.assertIn("transfers is not a whole number", caught.exception.reason)
+
+    def test_emissions_must_be_a_number_when_given(self):
+        for value in (float("nan"), float("inf"), True, "15"):
+            with self.subTest(value=value):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    make_departure(emissions_kg=value)
+                self.assertIn("emissions is not a number", caught.exception.reason)
 
     def test_id_must_match_company_and_destination(self):
         other_company = Company("CE", "Camino Express", 4.5)
@@ -145,6 +172,48 @@ class FareTests(unittest.TestCase):
             make_fare(change_fee=-1)
         with self.assertRaises(InvalidRecordError):
             make_fare(luggage_kg=-1)
+
+    def test_offer_id_must_have_nothing_around_it(self):
+        for offer_id in ("SR-MAL-0001-B\n", " SR-MAL-0001-B"):
+            with self.subTest(offer_id=offer_id):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Fare(offer_id, "SR-MAL-0001", "basic", 30, False, False, 0, 0, 20)
+                self.assertIn("offer ID has a space or a line break around it", caught.exception.reason)
+
+    def test_implausibly_high_change_fee_is_rejected(self):
+        make_fare(changeable=True, change_fee=500.0)
+        with self.assertRaises(InvalidRecordError) as caught:
+            make_fare(changeable=True, change_fee=500.01)
+        self.assertIn("change fee is implausibly high", caught.exception.reason)
+
+    def test_values_that_are_not_numbers_are_rejected(self):
+        # Not-a-number passes every "smaller than" check, so the range checks alone would let it in.
+        for name, label in (("price", "price"), ("change_fee", "change fee"), ("refund_percent", "refund percent")):
+            for value in (float("nan"), float("inf"), True, "30"):
+                with self.subTest(name=name, value=value):
+                    with self.assertRaises(InvalidRecordError) as caught:
+                        make_fare(changeable=True, **{name: value})
+                    self.assertIn(f"{label} is not a number", caught.exception.reason)
+
+    def test_luggage_must_be_a_whole_number(self):
+        for value in (20.5, float("nan"), True, "20", None):
+            with self.subTest(value=value):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    make_fare(luggage_kg=value)
+                self.assertIn("luggage is not a whole number", caught.exception.reason)
+
+    def test_a_whole_number_too_large_for_a_float_is_not_a_number(self):
+        with self.assertRaises(InvalidRecordError) as caught:
+            make_fare(price=10**400)
+        self.assertIn("price is not a number", caught.exception.reason)
+
+    def test_changeable_and_refundable_must_be_yes_or_no(self):
+        for name in ("changeable", "refundable"):
+            for value in ("yes", 1, None):
+                with self.subTest(name=name, value=value):
+                    with self.assertRaises(InvalidRecordError) as caught:
+                        make_fare(**{name: value})
+                    self.assertIn(f"{name} must be yes or no", caught.exception.reason)
 
     def test_fare_survives_a_round_trip_through_plain_values(self):
         fare = make_fare(letter="S", changeable=True, change_fee=10)
@@ -260,6 +329,87 @@ class BookingTests(unittest.TestCase):
                             ("total_price", -1.0), ("reference", "BB-1")):
             with self.subTest(name=name, value=value), self.assertRaises(InvalidRecordError):
                 Booking.from_dict({**good, name: value})
+
+    def test_booking_names_must_be_text_that_is_not_empty(self):
+        good = self.make_booking().to_dict()
+        for name, value, label in (("company_name", 123, "company name"),
+                                   ("company_name", "", "company name"),
+                                   ("destination_name", None, "destination name"),
+                                   ("destination_name", "  ", "destination name")):
+            with self.subTest(name=name, value=value):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking.from_dict({**good, name: value})
+                self.assertIn(f"{label} is missing", caught.exception.reason)
+
+    def test_booking_reference_must_have_nothing_around_it(self):
+        good = self.make_booking().to_dict()
+        for reference in (" BB-20261120-7K3QX9", "BB-20261120-7K3QX9 ", "BB-20261120-7K3QX9\n"):
+            with self.subTest(reference=reference):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking.from_dict({**good, "reference": reference})
+                self.assertIn("booking reference has the wrong form", caught.exception.reason)
+
+    def test_booking_names_must_be_plain_text(self):
+        good = self.make_booking().to_dict()
+        for value in ("Costa\nLink", "Costa\ud800Link"):
+            with self.subTest(value=ascii(value)):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking.from_dict({**good, "company_name": value})
+                self.assertIn("company name is missing or is not plain text", caught.exception.reason)
+
+    def test_booking_times_before_the_year_2000_are_rejected(self):
+        good = self.make_booking().to_dict()
+        with self.assertRaises(InvalidRecordError) as caught:
+            Booking.from_dict({**good, "booked_at": "1999-12-31T23:59"})
+        self.assertIn("booking time is before the year 2000", caught.exception.reason)
+        Booking.from_dict({**good, "booked_at": "2000-01-01T00:00"})
+
+    def test_booking_total_must_be_the_price_times_the_passengers(self):
+        good = self.make_booking().to_dict()
+        for name, value in (("total_price", 90.01), ("total_price", 90.004), ("total_price", 1.7e308),
+                            ("passengers", 3)):
+            with self.subTest(name=name):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking.from_dict({**good, name: value})
+                self.assertIn("is not the fare price times the passengers", caught.exception.reason)
+
+    def test_booking_passengers_have_an_upper_limit(self):
+        good = self.make_booking().to_dict()
+        Booking.from_dict({**good, "passengers": 1000, "total_price": 45000.0})
+        for passengers in (1001, 10**400):
+            with self.subTest(passengers=str(passengers)[:8]):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking.from_dict({**good, "passengers": passengers, "total_price": 45.0 * 1001})
+                self.assertIn("passengers is implausibly high", caught.exception.reason)
+
+    def test_a_booking_record_must_be_a_set_of_named_values(self):
+        good = self.make_booking().to_dict()
+        with self.assertRaises(InvalidRecordError) as caught:
+            Booking.from_dict(list(good.items()))
+        self.assertIn("is not a set of named values", caught.exception.reason)
+
+    def test_booking_payment_status_must_be_a_known_one(self):
+        good = self.make_booking().to_dict()
+        with self.assertRaises(InvalidRecordError) as caught:
+            Booking.from_dict({**good, "payment_status": "paid"})
+        self.assertIn("unknown payment status", caught.exception.reason)
+
+    def test_booking_times_must_be_date_times(self):
+        booking = self.make_booking()
+        for name in ("departure", "arrival", "booked_at"):
+            with self.subTest(name=name):
+                values = {**vars(booking), name: "soon"}
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking(**values)
+                self.assertIn("is not a date and time", caught.exception.reason)
+
+    def test_booking_arrival_must_be_after_departure(self):
+        booking = self.make_booking()
+        for arrival in (booking.departure, booking.departure - timedelta(hours=1)):
+            with self.subTest(arrival=arrival):
+                with self.assertRaises(InvalidRecordError) as caught:
+                    Booking(**{**vars(booking), "arrival": arrival})
+                self.assertIn("arrival is not after departure", caught.exception.reason)
 
     def test_cancelled_booking_is_not_active(self):
         booking = self.make_booking()

@@ -3,9 +3,9 @@ $ python3 main.py book --offer CL-MAL-0007-S --passengers 2
 BOOKING CONFIRMED
 ------------------------------------------------------------------------
 Booking confirmed: 2 standard seats to Malaga for 76.38 EUR.
-Your reference is BB-20261119-CM8GAZ. Keep it to view or cancel your booking.
+Your reference is BB-20261120-NNPR35. Keep it to change or cancel your booking.
 
-Reference:      BB-20261119-CM8GAZ
+Reference:      BB-20261120-NNPR35
 Journey:        Madrid to Malaga with CostaLink
 Departure:      Tue 13 Jul 2027 08:30
 Arrival:        15:00
@@ -14,21 +14,21 @@ Passengers:     2
 Total price:    76.38 EUR (38.19 EUR per person)
 Payment:        paid (simulated)
 Fare conditions stored with this booking:
-  changeable:   yes, fee 10.00 EUR
+  changeable:   yes, fee 10.00 EUR per person
   refundable:   no
   luggage:      20 kg per person
-Booked at:      2026-11-19 15:06
+Booked at:      2026-11-20 00:51
 No real payment was taken. This is a simulation.
 Seats left on this bus: 42
 
-$ python3 main.py change --ref BB-20261119-CM8GAZ --offer CL-MAL-0009-S
+$ python3 main.py change --ref BB-20261120-NNPR35 --offer CL-MAL-0009-S
 ------------------------------------------------------------------------
 BOOKING CHANGED
 ------------------------------------------------------------------------
-Booking BB-20261119-CM8GAZ is changed: 2 standard seats to Malaga, now leaving Wed 14 Jul 09:15.
+Booking BB-20261120-NNPR35 is changed: 2 standard seats to Malaga, now leaving Wed 14 Jul 09:15.
 To pay: 24.00 EUR (change fee 20.00 EUR, higher ticket price 4.00 EUR).
 
-Reference:      BB-20261119-CM8GAZ
+Reference:      BB-20261120-NNPR35
 Journey:        Madrid to Malaga with CostaLink
 Departure:      Wed 14 Jul 2027 09:15
 Arrival:        15:45
@@ -37,19 +37,19 @@ Passengers:     2
 Total price:    80.38 EUR (40.19 EUR per person)
 Payment:        paid (simulated)
 Fare conditions stored with this booking:
-  changeable:   yes, fee 10.00 EUR
+  changeable:   yes, fee 10.00 EUR per person
   refundable:   no
   luggage:      20 kg per person
-Booked at:      2026-11-19 15:06
+Booked at:      2026-11-20 00:51
 No real payment was taken. This is a simulation.
 Seats left on this bus: 11
 
-$ python3 main.py change --ref BB-20261119-CM8GAZ --offer VB-MAL-0005-S
+$ python3 main.py change --ref BB-20261120-NNPR35 --offer VB-MAL-0005-S
 Not changed: a ticket can only be changed to another CostaLink bus to Malaga. Offer VB-MAL-0005-S is VerdeBus to Malaga.
 
 $ python3 main.py bookings
 Reference           Offer          Departure         Pass.      Total  Status        Refund
-BB-20261119-CM8GAZ  CL-MAL-0009-S  Wed 14 Jul 09:15      2  80.38 EUR  confirmed
+BB-20261120-NNPR35  CL-MAL-0009-S  Wed 14 Jul 09:15      2  80.38 EUR  confirmed
 
 1 booking: 1 confirmed, 0 cancelled.
 To change or cancel a confirmed booking, use the change or cancel command with its reference.

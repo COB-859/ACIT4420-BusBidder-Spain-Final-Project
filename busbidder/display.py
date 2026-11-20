@@ -1,7 +1,9 @@
-"""Builds the text the user sees: request summary, ranking, comparison.
+"""Builds the text the user sees: request summary, ranking, comparison,
+and the messages for a booking, a change and a cancellation.
 
-Every function returns lines of text and prints nothing, so the output
-can be tested and saved to a file as well as shown on screen.
+Every function returns text (one line or a list of lines) and prints
+nothing, so the output can be tested and saved to a file as well as shown
+on screen.
 """
 
 from __future__ import annotations
@@ -228,7 +230,7 @@ def format_next_step(ranked: Sequence[ScoredOffer], passengers: int) -> list[str
 
 
 def format_seats_after(seats_left: int) -> str:
-    """Return how many seats the bus has left after a booking or a cancellation."""
+    """Return how many seats the bus has left after a booking, a change or a cancellation."""
     if seats_left == 0:
         return "This bus is now sold out."
     return f"Seats left on this bus: {seats_left}"
@@ -245,13 +247,13 @@ def format_outcome(booking: Booking) -> list[str]:
     if booking.is_active:
         return [
             f"Booking confirmed: {seats} for {booking.total_price:.2f} EUR.",
-            f"Your reference is {booking.reference}. Keep it to view or cancel your booking.",
+            f"Your reference is {booking.reference}. Keep it to change or cancel your booking.",
         ]
     lines = [f"Booking {booking.reference} is cancelled: {seats}."]
     if booking.refund_amount:
         lines.append(
             f"Refund: {booking.refund_amount:.2f} EUR "
-            f"({booking.fare.refund_percent:g}% of the {booking.total_price:.2f} EUR paid)."
+            f"({booking.fare.refund_percent:g}% of the ticket price of {booking.total_price:.2f} EUR)."
         )
     else:
         lines.append(f"No refund, because this {fare_type} ticket is not refundable.")
@@ -286,7 +288,7 @@ def format_details(booking: Booking) -> list[str]:
     """Return the details of a booking, as shown under every confirmation."""
     fare = booking.fare
     arrival_format = "%H:%M" if booking.arrival.date() == booking.departure.date() else DAY_FORMAT
-    change = f"yes, fee {fare.change_fee:.2f} EUR" if fare.changeable else "no"
+    change = f"yes, fee {fare.change_fee:.2f} EUR per person" if fare.changeable else "no"
     refund = f"yes, {fare.refund_percent:g}% of the price" if fare.refundable else "no"
     lines = [
         f"Reference:      {booking.reference}",

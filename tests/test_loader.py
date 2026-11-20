@@ -269,7 +269,7 @@ class ProfileTests(TempDirTestCase):
         self.assertEqual(profiles["budget"].weights["price"], 55)
         self.assertEqual(profiles["flexible"].description, "Flexibility first")
 
-    def test_project_profiles_include_the_three_required_ones(self):
+    def test_project_profiles_include_the_three_required_ones_and_eco(self):
         profiles = load_profiles(PROJECT_DATA / "profiles.json")
         for key in ("budget", "business", "flexible", "eco"):
             self.assertIn(key, profiles)

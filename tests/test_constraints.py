@@ -5,6 +5,7 @@ from datetime import date
 
 from busbidder.constraints import (
     CONSTRAINTS,
+    advise,
     constraint,
     describe_constraints,
     filter_offers,
@@ -159,6 +160,36 @@ class FilterResultTests(unittest.TestCase):
         result = run_filter(self.offers, budget=10)
         self.assertEqual(result.accepted, [])
         self.assertEqual(result.strictest(), "budget")
+
+
+class AdviceTests(unittest.TestCase):
+    def test_a_tie_gives_the_advice_for_the_first_registered_condition(self):
+        # One offer fails only luggage and comes first in the list, one fails
+        # only the budget. Budget is registered before luggage, so it wins.
+        offers = [
+            make_offer("B", serial=1, price=20, luggage_kg=10),
+            make_offer("B", serial=2, price=60, luggage_kg=20),
+        ]
+        request = make_request(budget=50, min_luggage_kg=15)
+        result = filter_offers(offers, request, SEATS)
+        self.assertEqual(result.counts["budget"], result.counts["luggage"])
+        lines = advise(result, request)
+        self.assertIn("cost more than your budget of 50.00 EUR", lines[0])
+        self.assertNotIn("luggage", lines[0])
+
+    def test_sold_out_buses_are_told_to_try_other_dates(self):
+        offers = [make_offer("B", serial=1), make_offer("S", serial=2)]
+        request = make_request()
+        result = filter_offers(offers, request, {"SR-MAL-0001": 0, "SR-MAL-0002": 0})
+        lines = advise(result, request)
+        self.assertIn("2 of the 2 offers are sold out.", lines[0])
+        self.assertIn("Every bus is sold out. Try other dates.", lines[1])
+
+    def test_seats_left_are_named_when_some_bus_has_a_seat(self):
+        offers = [make_offer("B", serial=1), make_offer("B", serial=2)]
+        request = make_request(passengers=3)
+        result = filter_offers(offers, request, {"SR-MAL-0001": 0, "SR-MAL-0002": 2})
+        self.assertIn("The most seats left on one bus is 2.", advise(result, request)[1])
 
 
 class DescribeTests(unittest.TestCase):

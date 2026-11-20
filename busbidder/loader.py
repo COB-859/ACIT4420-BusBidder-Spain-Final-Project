@@ -1,8 +1,9 @@
 """Reads the data files, builds the objects and sets bad rows aside.
 
 Policy: a bad row is rejected and recorded, never corrected. Loading
-continues with the next row. A missing file or a missing column stops the
-load with a DataFileError, because nothing useful can be read from it.
+continues with the next row. A missing main file, or a missing column in
+any file, stops the load with a DataFileError. A missing *_invalid.csv
+file is skipped.
 """
 
 from __future__ import annotations

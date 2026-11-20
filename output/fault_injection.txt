@@ -1,34 +1,34 @@
-Faults injected: one change at a time, each of the 348 possible changes in 10 of the 12 modules.
+Faults injected: one change at a time, each of the 366 possible changes in 10 of the 12 modules.
 
 Module         Injected  Caught  Survived
 booking              39      34         5
 cli                  70      66         4
-constraints          46      46         0
+constraints          47      47         0
 criteria             16      16         0
 display              23      23         0
 explain              15      15         0
 loader               18      18         0
-models               74      70         4
+models               91      87         4
 ranking              21      19         2
 validation           26      26         0
-Total               348     333        15
+Total               366     351        15
 
-The tests caught 333 of 348 injected faults (96 percent).
+The tests caught 351 of 366 injected faults (96 percent).
 
 Survivors (a change no test noticed):
-  busbidder/booking.py:93
+  busbidder/booking.py:96
       was:  if time.monotonic() >= deadline:
       made: if time.monotonic() > deadline:
-  busbidder/booking.py:110
+  busbidder/booking.py:114
       was:  return time.time() - self.lock_path.stat().st_mtime > LOCK_STALE_SECONDS
       made: return time.time() - self.lock_path.stat().st_mtime >= LOCK_STALE_SECONDS
-  busbidder/booking.py:112
+  busbidder/booking.py:116
       was:  return False        # the lock has just gone, so try again
       made: return True        # the lock has just gone, so try again
-  busbidder/booking.py:116
+  busbidder/booking.py:120
       was:  self.lock_path.unlink(missing_ok=True)
       made: self.lock_path.unlink(missing_ok=False)
-  busbidder/booking.py:177
+  busbidder/booking.py:184
       was:  temporary.unlink(missing_ok=True)
       made: temporary.unlink(missing_ok=False)
   busbidder/cli.py:126
@@ -43,21 +43,21 @@ Survivors (a change no test noticed):
   busbidder/cli.py:316
       was:  or "none",
       made: and "none",
-  busbidder/models.py:254
+  busbidder/models.py:284
       was:  inside = start <= moment <= end
       made: inside = start < moment <= end
-  busbidder/models.py:254
+  busbidder/models.py:284
       was:  inside = start <= moment <= end
       made: inside = start <= moment < end
-  busbidder/models.py:256
+  busbidder/models.py:286
       was:  inside = moment >= start or moment <= end
       made: inside = moment >= start or moment < end
-  busbidder/models.py:256
+  busbidder/models.py:286
       was:  inside = moment >= start or moment <= end
       made: inside = moment > start or moment <= end
-  busbidder/ranking.py:65
+  busbidder/ranking.py:67
       was:  if abs(total - PERCENT_TOTAL) <= PERCENT_TOLERANCE:
       made: if abs(total - PERCENT_TOTAL) < PERCENT_TOLERANCE:
-  busbidder/ranking.py:67
+  busbidder/ranking.py:69
       was:  elif abs(total - FRACTION_TOTAL) <= FRACTION_TOLERANCE:
       made: elif abs(total - FRACTION_TOTAL) < FRACTION_TOLERANCE:

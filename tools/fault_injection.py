@@ -11,8 +11,9 @@ the tests saying so. The project itself is not changed.
 Not every survivor is a gap. Some changes do not alter what the program
 does (an equivalent change), for example in a log message.
 
-Every possible change is tried, so the result is the same on every run.
-It takes about a quarter of an hour.
+Every change of the kinds listed in CHANGES is tried in each of the ten
+modules listed in MODULES. None is sampled, so the result is the same on
+every run. It takes about ten minutes.
 """
 
 from __future__ import annotations

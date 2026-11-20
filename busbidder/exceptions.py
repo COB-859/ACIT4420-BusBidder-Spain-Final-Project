@@ -1,22 +1,24 @@
 """Custom exceptions for BusBidder Spain.
 
-Every error the program raises on purpose is a BusBidderError, so the
-command-line module can catch that one class and print a clear message.
+Every error that is meant to end a command is a BusBidderError, so main()
+can catch that one class. The command-line module also raises ValueError
+(guided-mode answers) and argparse.ArgumentTypeError (options) and handles
+them itself.
 """
 
 from __future__ import annotations
 
 
 class BusBidderError(Exception):
-    """Base class for every error raised by this program."""
+    """Base class for every error that is meant to end a command."""
 
 
 class DataFileError(BusBidderError):
-    """A data file is missing, unreadable or has the wrong columns."""
+    """A data, profiles, bookings or result file cannot be read, holds the wrong content, is in use or cannot be written."""
 
 
 class InvalidRecordError(BusBidderError):
-    """One row of a data file holds a missing or impossible value."""
+    """A value from a data file, the bookings file or the traveller is missing or impossible."""
 
     def __init__(self, reason: str) -> None:
         """Keep the reason, so the loader can record it with the file and line."""
@@ -33,11 +35,11 @@ class InvalidRequestError(BusBidderError):
 
 
 class WeightError(BusBidderError):
-    """The weights are negative, incomplete or do not total 100%."""
+    """The weights cannot be read, name an unknown criterion, are negative or incomplete, do not total 100 (or 1.0), or let one criterion dominate."""
 
 
 class BookingError(BusBidderError):
-    """A booking could not be made, found or cancelled."""
+    """A booking could not be made, found, changed or cancelled."""
 
 
 class NoSeatsError(BookingError):
@@ -45,7 +47,7 @@ class NoSeatsError(BookingError):
 
 
 class NotChangeableError(BookingError):
-    """The ticket's fare conditions do not allow a change."""
+    """The ticket cannot be changed: its fare conditions do not allow it, or the new offer is of another company or destination."""
 
 
 class BookingNotFoundError(BookingError):

@@ -249,7 +249,7 @@
 69. cancel the 2 flex seats (90% refundable)  [exit code 0]
     command:  cancel --ref BB-<date>-<code>
     feedback: Booking BB-<date>-<code> is cancelled: 2 flex seats to Malaga.
-    feedback: Refund: 85.93 EUR (90% of the 95.48 EUR paid).
+    feedback: Refund: 85.93 EUR (90% of the ticket price of 95.48 EUR).
     feedback: Seats left on this bus: 43
 70. cancel the same booking again  [exit code 1]
     command:  cancel --ref BB-<date>-<code>

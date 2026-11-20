@@ -1,6 +1,6 @@
 """BusBidder Spain: run from the project folder.
 
-    python main.py --help
+    python3 main.py --help
 """
 
 import sys

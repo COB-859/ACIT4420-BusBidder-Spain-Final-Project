@@ -7,7 +7,9 @@ from busbidder.display import (
     format_bookings,
     format_comparison,
     format_confirmation,
+    format_details,
     format_filter,
+    format_outcome,
     format_preferences,
     format_ranking,
     format_removed,
@@ -161,6 +163,15 @@ class BookingTextTests(unittest.TestCase):
         self.assertIn("No real payment was taken", text)
         self.assertNotIn("Refund:", text)
 
+    def test_confirmation_tells_the_traveller_to_keep_the_reference(self):
+        text = text_of(format_outcome(make_booking()))
+        self.assertIn("Keep it to change or cancel your booking.", text)
+
+    def test_details_show_the_change_fee_per_person_for_a_changeable_fare(self):
+        booking = make_booking(letter="S")
+        booking.fare = make_fare(letter="S", changeable=True, change_fee=10)
+        self.assertIn("fee 10.00 EUR per person", text_of(format_details(booking)))
+
     def test_booking_list(self):
         self.assertEqual(format_bookings([]), ["You have no bookings yet. Search for a bus, then use the book command."])
         text = text_of(format_bookings([make_booking(), make_booking("BB-20261120-BBBBBB", status="cancelled")]))
@@ -173,7 +184,7 @@ class BookingTextTests(unittest.TestCase):
         refunded.refund_amount = 54.0
         lines = format_confirmation(refunded)
         self.assertEqual(lines[3], "Booking BB-20261120-AAAAAA is cancelled: 2 flex seats to Malaga.")
-        self.assertEqual(lines[4], "Refund: 54.00 EUR (90% of the 60.00 EUR paid).")
+        self.assertEqual(lines[4], "Refund: 54.00 EUR (90% of the ticket price of 60.00 EUR).")
 
         not_refunded = make_booking(status="cancelled")
         not_refunded.refund_amount = 0.0

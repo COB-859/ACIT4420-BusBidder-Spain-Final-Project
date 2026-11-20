@@ -79,6 +79,30 @@ class BookingStoreTests(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(DataFileError):
                 self.store.load()
 
+    def test_a_file_that_cannot_be_decoded_is_a_data_file_error(self):
+        # A number of 5,000 digits and very deep nesting stop the JSON reader itself.
+        self.path.parent.mkdir(parents=True)
+        for text in ('[{"passengers": ' + "1" * 5000 + "}]", "[" * 100000 + "]" * 100000):
+            self.path.write_text(text, encoding="utf-8")
+            with self.subTest(start=text[:18]):
+                with self.assertRaises(DataFileError) as caught:
+                    self.store.load()
+                self.assertIn("cannot read bookings file", str(caught.exception))
+
+    def test_an_entry_with_odd_field_names_gives_one_printable_line(self):
+        # The name of an unknown field ends up in the message, so it must not break the line.
+        for name in ("\ud800", "a\nb"):
+            entry = make_booking().to_dict()
+            entry["fare"][name] = 1
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps([entry]), encoding="utf-8")
+            with self.subTest(name=ascii(name)):
+                with self.assertRaises(DataFileError) as caught:
+                    self.store.load()
+                message = str(caught.exception)
+                self.assertIn("booking 1 is not a valid booking record", message)
+                self.assertTrue(message.isprintable(), ascii(message))
+
     def save_edited(self, **changes):
         """Save one valid booking with some values replaced, as a person editing the file might."""
         entry = make_booking().to_dict()
@@ -101,6 +125,11 @@ class BookingStoreTests(unittest.TestCase):
             ({"reference": None}, "booking reference has the wrong form"),
             ({"reference": "not-a-reference"}, "booking reference has the wrong form"),
             ({"fare": {"price": -5}}, "price must be above 0"),
+            ({"fare": {"price": float("nan")}}, "price is not a number"),
+            ({"fare": {"change_fee": float("inf")}}, "change fee is not a number"),
+            ({"fare": {"luggage_kg": 20.5}}, "luggage is not a whole number"),
+            ({"fare": {"changeable": "yes"}}, "changeable must be yes or no"),
+            ({"total_price": float("nan")}, "total price must be a number"),
             ({"fare": {"offer_id": 5}}, "is not a valid booking record"),
             ({"departure": "yesterday"}, "is not a valid booking record"),
         )
@@ -111,6 +140,24 @@ class BookingStoreTests(unittest.TestCase):
                     self.store.load()
                 self.assertIn("booking 1", str(caught.exception))
                 self.assertIn(message, str(caught.exception))
+
+    def test_a_record_without_a_defaulted_key_is_rejected(self):
+        for key in ("status", "payment_status", "refund_amount"):
+            entry = make_booking().to_dict()
+            del entry[key]
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps([entry]), encoding="utf-8")
+            with self.subTest(key=key), self.assertRaises(DataFileError) as caught:
+                self.store.load()
+            self.assertIn("booking 1", str(caught.exception))
+            self.assertIn(f"booking record lacks {key}", str(caught.exception))
+
+    def test_a_number_too_large_for_a_float_is_rejected(self):
+        self.save_edited(total_price=10**400)
+        with self.assertRaises(DataFileError) as caught:
+            self.store.load()
+        self.assertIn("booking 1", str(caught.exception))
+        self.assertIn("total price must be a number", str(caught.exception))
 
     def test_same_reference_twice_is_rejected(self):
         entry = make_booking().to_dict()
@@ -219,7 +266,7 @@ class LockTests(ServiceTestCase):
         with self.store.locked():
             with self.assertRaises(DataFileError) as caught:
                 service.book("SR-MAL-0001-B", 1)
-            self.assertIn("is in use by another copy of the program, so nothing was changed",
+            self.assertIn("is in use by another copy of the program, or its folder cannot be written, so nothing was changed",
                           str(caught.exception))
             # The run that holds the lock keeps it.
             self.assertTrue(self.store.lock_path.exists())

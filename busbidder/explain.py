@@ -1,8 +1,11 @@
 """Builds the short explanation of why the top offer ranks first.
 
-The text is generated from the scores, so it always matches the table
-above it. It names advantages and a remaining disadvantage, and never
-calls the offer objectively best.
+The text is generated from the same scores as the table, so the values,
+points, contributions and totals it quotes are the table's own. A gain is
+worked out before rounding, so it can be 0.01 away from the difference of
+the two printed contributions. It names advantages and a remaining
+disadvantage, and never calls the offer
+objectively best.
 """
 
 from __future__ import annotations

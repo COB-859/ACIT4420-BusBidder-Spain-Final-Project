@@ -30,5 +30,5 @@ Over 20 rounds:
   travellers told 'confirmed' for a booking that was not saved: 0
   bookings saved although the traveller was told it failed: 0
   travellers who got any other answer: 0
-'Told not saved' is the error 'cannot write bookings file'. 'Saved, but told failed' counts the
-bookings among them that were saved all the same: they hold a seat the traveller does not know of.
+'Told not saved' is the error 'cannot write bookings file'. 'Saved, but told failed' counts the saved
+bookings that no traveller was told were confirmed: they hold a seat the traveller does not know of.

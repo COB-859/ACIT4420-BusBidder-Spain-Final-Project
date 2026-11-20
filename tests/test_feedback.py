@@ -95,7 +95,7 @@ class AdviceTests(CliTestCase):
             "5 of the 5 offers cost more than your budget of 5.00 EUR.",
             "The cheapest offer that meets your other requirements costs 30.00 EUR.",
         ])
-        # The cheapest direct bus costs 48.00 EUR.
+        # The cheapest direct bus with a seat left costs 48.00 EUR (the 45.00 EUR bus is sold out).
         self.assertEqual(self.advice("--budget", "40", "--max-transfers", "0")[1],
                          "The cheapest offer that meets your other requirements costs 48.00 EUR.")
 
@@ -166,11 +166,11 @@ class CoverageTests(unittest.TestCase):
         self.assertIsNone(LoadResult().travel_days())
         departures = {
             "SR-MAL-0001": make_departure(serial=1),
-            "SR-MAL-0002": make_departure(serial=2),
+            "SR-MAL-0002": make_departure(
+                serial=2, departure="2027-07-14T08:00", arrival="2027-07-14T14:00"),
         }
         first, last = LoadResult(departures=departures).travel_days()
-        self.assertLessEqual(first, last)
-        self.assertEqual(first, min(d.departure.date() for d in departures.values()))
+        self.assertEqual((first, last), (date(2027, 7, 12), date(2027, 7, 14)))
 
     def test_no_bus_on_the_dates_names_the_days_with_buses(self):
         text = text_of(format_filter(filter_offers([], REQUEST, {}), REQUEST, DATA_DAYS))
@@ -216,10 +216,12 @@ class CommandFeedbackTests(CliTestCase):
             main(list(arguments))
         return caught.exception.code, message.getvalue()
 
-    def test_a_mistake_on_the_command_line_is_reported_in_one_line(self):
+    def test_a_mistake_on_the_command_line_is_reported_in_two_lines_without_the_usage_text(self):
         cases = (
             (["search", *MALAGA, "--profile", "budget", "--passengers", "two"],
              "Error: argument --passengers: must be a whole number: 'two'.", "main.py search"),
+            (["search", *MALAGA, "--profile", "budget", "--passengers", "\u0662"],     # a digit from another script
+             "Error: argument --passengers: must be a whole number:", "main.py search"),
             (["search", *MALAGA, "--profile", "budget", "--top", "-3"],
              "Error: argument --top: must be 0 or more: '-3'.", "main.py search"),
             (["search", *MALAGA, "--profile", "budget", "--weights", "price=100"],
@@ -376,7 +378,7 @@ class CommandFeedbackTests(CliTestCase):
         self.run_main("cancel", "--ref", reference)
         _code, text = self.run_main("bookings")
         self.assertIn("1 booking: 0 confirmed, 1 cancelled.", text)
-        self.assertNotIn("To cancel", text)
+        self.assertNotIn("To change or cancel", text)
 
     def test_validate_ends_with_a_result_when_only_a_profile_is_invalid(self):
         (self.data_dir / "profiles.json").write_text(

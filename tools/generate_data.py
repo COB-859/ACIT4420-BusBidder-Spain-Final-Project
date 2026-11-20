@@ -1,6 +1,8 @@
 """Generate the BusBidder Spain data files.
 
-    python tools/generate_data.py
+    python3 tools/generate_data.py [--out FOLDER]
+
+Run it from the project folder. Without --out it writes to data.
 
 The random generator has a fixed seed, so every run writes exactly the
 same files. The numbers are invented; the companies are fictional.
@@ -48,7 +50,8 @@ DESTINATIONS = [
 ]
 COASTAL = {"BAR", "VAL", "MAL", "SSE", "ALI", "CAD", "BIL"}
 
-# How each company differs. Hours are the first and last departure of the day.
+# How each company differs. Hours are the first and the last hour in which a
+# bus leaves (the last departure can be at :45).
 PROFILES = {
     "SR": {  # low-cost daytime services
         "price": 0.75, "speed": 1.15, "hours": (7, 17), "transfers": (0, 1, 1),

@@ -75,7 +75,9 @@ class BookingStore:
 
         Creating a file that must not exist yet is one step for the
         operating system, on Windows and on Linux, so only one copy of the
-        program can hold the lock. The others try again until it is free.
+        program can hold the lock. The others try again for up to
+        wait_seconds and then stop with an error. A lock older than
+        LOCK_STALE_SECONDS was left behind by a stopped run and is removed.
         Without the lock, two copies read the same bookings and the second
         to write wipes out the booking of the first.
         """
@@ -86,14 +88,16 @@ class BookingStore:
                 handle = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
                 break
             except (FileExistsError, PermissionError):
-                # PermissionError: on Windows, the lock is being removed right now.
+                # PermissionError: on Windows the lock is being removed right now.
+                # On any system it is also what a folder that cannot be written gives.
                 if self._lock_is_stale():
                     self._remove_lock()
                     continue
                 if time.monotonic() >= deadline:
                     raise DataFileError(
                         f"the bookings file {self.path} is in use by another copy of the "
-                        "program, so nothing was changed. Try again in a moment"
+                        "program, or its folder cannot be written, so nothing was changed. "
+                        "Try again in a moment"
                     ) from None
                 time.sleep(LOCK_RETRY_SECONDS)
             except OSError as error:
@@ -129,7 +133,9 @@ class BookingStore:
             raise DataFileError(f"cannot read bookings file {self.path}: {error}") from error
         try:
             data = json.loads(text)
-        except json.JSONDecodeError as error:
+        except (ValueError, RecursionError) as error:
+            # ValueError: the text is not JSON, or holds a number too long to
+            # convert. RecursionError: lists or objects nested too deeply.
             raise DataFileError(f"cannot read bookings file {self.path}: {error}") from error
         if not isinstance(data, list):
             raise DataFileError(f"bookings file {self.path} must hold a list of bookings")
@@ -158,7 +164,8 @@ class BookingStore:
             # wrong type; all of these mean the entry is not a booking.
             raise DataFileError(
                 f"bookings file {self.path}: booking {number} is not a valid booking record "
-                f"({type(error).__name__}: {error})"
+                # ascii() keeps the line printable whatever text the entry held.
+                f"({type(error).__name__}: {ascii(str(error))})"
             ) from error
 
     def save(self, bookings: Iterable[Booking]) -> None:
@@ -229,7 +236,7 @@ class Change:
 
     @property
     def to_pay(self) -> float:
-        """The fee plus the higher price of the new ticket."""
+        """The fee plus the price difference when the new ticket costs more."""
         return round(self.fee + self.price_difference, 2)
 
 

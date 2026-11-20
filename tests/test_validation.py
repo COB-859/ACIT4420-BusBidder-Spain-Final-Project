@@ -40,6 +40,11 @@ class TextAndNumberTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(InvalidRecordError):
                 parse_int(value, "seats", minimum=0)
 
+    def test_parse_int_with_too_many_digits_is_a_record_error(self):
+        with self.assertRaises(InvalidRecordError) as caught:
+            parse_int("9" * 5000, "seats")
+        self.assertIn("too many digits", caught.exception.reason)
+
     def test_parse_float_normal(self):
         self.assertEqual(parse_float("29.90", "price", minimum=0), 29.9)
 
@@ -114,6 +119,10 @@ class IdentifierTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(InvalidIdentifierError):
                 split_departure_id(value)
 
+    def test_digits_from_other_scripts_are_not_accepted_in_a_departure_id(self):
+        with self.assertRaises(InvalidIdentifierError):
+            split_departure_id("SR-MAL-\u0660\u0660\u0660\u0661")   # Arabic-Indic digits
+
     def test_split_offer_id(self):
         self.assertEqual(split_offer_id("SR-MAL-0001-F"), ("SR-MAL-0001", "F"))
 
@@ -134,6 +143,9 @@ class IdentifierTests(unittest.TestCase):
                       "BB-20261120-7K3QO9", "BB-20261120-7K3Q19", "bb-20261120-7k3qx9", "", None):
             with self.subTest(value=value):
                 self.assertFalse(is_booking_reference(value))
+
+    def test_digits_from_other_scripts_are_not_accepted_in_a_booking_reference(self):
+        self.assertFalse(is_booking_reference("BB-\u0662\u0660\u0662\u0666\u0661\u0661\u0662\u0660-7K3QX9"))
 
 
 if __name__ == "__main__":

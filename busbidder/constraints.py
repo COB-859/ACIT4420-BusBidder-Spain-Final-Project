@@ -22,8 +22,10 @@ CheckFunction = Callable[[Offer, TravelRequest, int], "str | None"]
 # traveller did not set this condition.
 DescribeFunction = Callable[[TravelRequest], "str | None"]
 # Given the offers that fail only this constraint, and the words " that
-# meets your other requirements" or nothing, the suggestion names the
-# value that would work, such as the cheapest price.
+# meets your other requirements" or nothing, the suggestion names the best
+# value among those offers, such as the cheapest price, says how many
+# offers would match without the condition, or says that none of them can
+# be booked.
 SuggestFunction = Callable[[Sequence["RemovedOffer"], str], str]
 
 
@@ -33,7 +35,9 @@ class Constraint:
 
     problem and suggest are used when no offer is left. problem says what
     is wrong with the offers, in the traveller's words ("cost more than
-    your budget of 20.00 EUR"). suggest names the value that would work.
+    your budget of 20.00 EUR"). suggest names the best value among the
+    offers that fail only this condition, says how many of them there are,
+    or says that none of them can be booked.
     """
 
     name: str
@@ -69,14 +73,20 @@ def constraint(
     return register
 
 
+def _seats_suggestion(alone: Sequence[RemovedOffer], others: str) -> str:
+    """Name the most seats left on one bus, or say that those buses are sold out."""
+    most = max(entry.seats_left for entry in alone)
+    if most == 0:
+        return f"Every bus{others} is sold out. Try other dates."
+    return f"The most seats left on one bus{others} is {most}."
+
+
 @constraint(
     "seats",
     describe=lambda request: f"at least {count_of(request.passengers, 'seat')} left",
     problem=lambda request: "are sold out" if request.passengers == 1
     else f"have fewer than {request.passengers} seats left",
-    suggest=lambda alone, others: (
-        f"The most seats left on one bus{others} is {max(entry.seats_left for entry in alone)}."
-    ),
+    suggest=_seats_suggestion,
 )
 def enough_seats(offer: Offer, request: TravelRequest, seats_left: int) -> str | None:
     """The departure must have a seat for every passenger."""
@@ -283,7 +293,9 @@ def advise(result: FilterResult, request: TravelRequest) -> list[str]:
     for entry in result.removed:
         if len(entry.reasons) == 1:
             fails_only.setdefault(next(iter(entry.reasons)), []).append(entry)
-    name = max(fails_only, key=lambda key: result.counts[key], default=strictest)
+    # In the order of registration, so the first registered one wins a tie.
+    actionable = [key for key in CONSTRAINTS if key in fails_only]
+    name = max(actionable, key=lambda key: result.counts[key], default=strictest)
     rule = CONSTRAINTS[name]
     problem = (rule.problem(request) if rule.problem is not None else None) or f"fail the condition '{name}'"
     lines = [f"{result.counts[name]} of the {result.in_scope} offers {problem}."]

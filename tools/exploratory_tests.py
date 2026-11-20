@@ -49,8 +49,8 @@ MALAGA = ["--destination", "Malaga", *DATES, "--depart", "morning"]
 BUDGET = ["--profile", "budget"]
 # What the traveller reads first: an error, a note, or the result of the search.
 FEEDBACK = re.compile(
-    r"^(Error|Not booked|Run '|No buses|BusBidder has|Note: (some|the first)|\d+ of the \d+ offers|"
-    r"The (cheapest|most|shortest|highest|offer with)|Without this|Changing this|"
+    r"^(Error|Not booked|Not changed|Run '|No buses|BusBidder has|Note: (some|the first)|\d+ of the \d+ offers|"
+    r"The (cheapest|most|shortest|highest|offer with)|Every bus|Without this|Changing one requirement|"
     r"Offers left to rank|Booking |No refund|Refund:|This bus|Seats left|You have|\d+ bookings?:)"
 )
 # A booking reference changes on every run, so it is masked in the report.
@@ -423,8 +423,8 @@ def explore_simultaneous_bookings(rounds: int = 20, travellers: int = 8) -> int:
     print(f"  travellers told 'confirmed' for a booking that was not saved: {totals['lost']}")
     print(f"  bookings saved although the traveller was told it failed: {totals['ghost']}")
     print(f"  travellers who got any other answer: {totals['other']}")
-    print("'Told not saved' is the error 'cannot write bookings file'. 'Saved, but told failed' counts the")
-    print("bookings among them that were saved all the same: they hold a seat the traveller does not know of.")
+    print("'Told not saved' is the error 'cannot write bookings file'. 'Saved, but told failed' counts the saved")
+    print("bookings that no traveller was told were confirmed: they hold a seat the traveller does not know of.")
     return 0
 
 
@@ -439,9 +439,10 @@ EXAMPLE_WEIGHTS = {"price": 40.0, "duration": 25.0, "time": 15.0, "flex": 20.0}
 def explore_trials() -> int:
     """Measure what the evaluation in the report relies on.
 
-    60 requests are used: each of the 15 cities with each of the 4
+    Part 1 uses the specification's example request and weights. Parts 2
+    and 3 use 60 requests: each of the 15 cities with each of the 4
     departure periods, for the whole week, one passenger and no optional
-    requirement. Every request is ranked under each profile.
+    requirement. Each of those is ranked under each profile.
     """
     data = load_all(DATA)
     profiles = load_profiles(DATA / PROFILES_FILE)
@@ -645,7 +646,7 @@ def explore_alternatives() -> int:
                 partial_now += partial(now[0][0])
                 partial_before += partial(before[0][0])
     print(f"   {'':<62}{'Percent':>8}{'Yes/no':>8}")
-    print(f"   {'A ticket that refunds less than 90 percent ranks first':<62}{partial_now:>8}{partial_before:>8}")
+    print(f"   {'A partial refund (above 0, under 90 percent) ranks first':<62}{partial_now:>8}{partial_before:>8}")
     print(f"   {'First two offers more than 0 and less than 1 point apart':<62}{near_now:>8}{near_before:>8}")
     print(f"   The two rules recommend the same offer in {same} of {count} rankings.")
 
@@ -672,7 +673,11 @@ def explore_alternatives() -> int:
 
 
 def main() -> int:
-    """Run the chosen part and return 1 when a crash or a broken rule was found."""
+    """Run the chosen part.
+
+    Return 1 when edge finds a crash or rules finds a broken rule. The
+    other parts measure and always return 0.
+    """
     parser = argparse.ArgumentParser(description="Exploratory tests for BusBidder Spain.")
     parser.add_argument("part", choices=("edge", "rules", "race", "trials", "alternatives"),
                         help="edge: unusual input; rules: rules that must always hold; "
